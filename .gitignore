@@ -1,0 +1,26 @@
+# Local tools and downloaded packages
+downloads/
+tools/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ROS 2 / colcon
+build/
+install/
+log/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime artifacts
+*.log
+*.bag
+*.db3
+
