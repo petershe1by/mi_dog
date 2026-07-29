@@ -1,0 +1,25 @@
+/**:
+  ros__parameters:
+    # Deliberately false in the repository.  Set true only after the connection,
+    # topic mapping, standing posture and emergency-stop procedure are verified.
+    enable_motion: false
+    arm_token: ""
+    require_sensor_ready: true
+
+    # These are the documented CyberDog 2 defaults; inspect `ros2 topic list`
+    # on the robot and remap them if its software release differs.
+    camera_topic: "/image_rgb"
+    lidar_topic: "/scan"
+    imu_topic: "/camera/imu"
+    motion_topic: "/motion_servo_cmd"
+    command_topic: "/mi_dog_real/safe_cmd_vel"
+
+    sensor_timeout_sec: 1.0
+    command_timeout_sec: 0.30
+    publish_rate_hz: 10.0
+
+    # Conservative envelope, lower than the documented slow gait (303) maxima.
+    max_forward_mps: 0.25
+    max_lateral_mps: 0.10
+    max_yaw_rps: 0.40
+    step_height_m: 0.05

@@ -1,0 +1,13 @@
+# ROS 2 / colcon build products
+build/
+install/
+log/
+
+# Local environment and editor files
+.vscode/
+.idea/
+*.swp
+
+# Docker and runtime artefacts
+*.tar
+*.log
