@@ -3,11 +3,23 @@ build/
 install/
 log/
 
+# Local tools and Python environments
+downloads/
+tools/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
 # Local environment and editor files
 .vscode/
 .idea/
 *.swp
+.DS_Store
+Thumbs.db
 
 # Docker and runtime artefacts
 *.tar
 *.log
+*.bag
+*.db3
