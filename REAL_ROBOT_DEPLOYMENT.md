@@ -85,3 +85,13 @@ This test also exposed a firmware-semantics bug: Xiaomi `motion_action` defines
 and zero as healthy motor entries; every other motor error value remains fail-closed. The
 ARM64 rebuild passed, the sensor-only service restarted active, and the live safety reason
 returned to `ready`.
+
+A standing cardboard-box calibration then measured the front ultrasonic channel at roughly
+`0.50..0.75 m` for a nominal 0.8 m box, a stable `0.468 m` at 0.5 m, and mostly `0.288 m`
+(occasionally `0.296 m`) at 0.3 m. The whole-frame head ToF medians remained near
+`0.37/0.37 m` at all three distances, so they do not represent this frontal target. A
+candidate ultrasonic policy is stop at `<=0.35 m`, slow within `0.35..0.55 m`, require at
+least three consecutive ordinary detections, and reserve a single-frame path for an
+independently validated very-close emergency threshold. These values are not connected to
+motion until different materials, widths, lateral offsets, and low-speed dynamics are tested;
+head ToF needs a centre/upper 8x8 ROI instead of a whole-frame median.
