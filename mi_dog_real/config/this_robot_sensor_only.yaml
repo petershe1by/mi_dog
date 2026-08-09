@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
-    # Deliberately false in the repository.  Set true only after the connection,
-    # topic mapping, standing posture and emergency-stop procedure are verified.
+    # CyberDog 2 mi-desktop 48:b0:2d:7a:fe:40, observed 2026-08-05.
+    # This profile cannot publish motion even if command topics receive data.
     enable_motion: false
     arm_token: ""
     require_sensor_ready: true
@@ -9,39 +9,35 @@
     require_lidar_ready: true
     require_pose_ready: true
     require_estop_ready: true
-    # Competition motion remains stopped until an exact recognized phrase arrives.
     require_voice_start: true
 
-    # These are the documented CyberDog 2 defaults; inspect `ros2 topic list`
-    # on the robot and remap them if its software release differs.
-    camera_topic: "/image"
-    lidar_topic: "/scan"
-    pose_topic: "/pose_filtered"
+    camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
+    lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
+    pose_topic: "/mi_desktop_48_b0_2d_7a_fe_40/pose_filtered"
+    motion_topic: "/mi_desktop_48_b0_2d_7a_fe_40/motion_servo_cmd"
     estop_topic: "/mi_dog_real/emergency_stop"
-    motion_topic: "/motion_servo_cmd"
     command_topic: "/mi_dog_real/safe_cmd_vel"
-    # Map the robot's verified ASR text output into this String topic.
-    voice_command_topic: "/mi_dog_real/voice_command"
-    touch_topic: "/touch_status"
+    voice_command_topic: "/mi_desktop_48_b0_2d_7a_fe_40/asr_text"
+    touch_topic: "/mi_desktop_48_b0_2d_7a_fe_40/touch_status"
     race_enabled_topic: "/mi_dog_real/race_enabled"
     operator_event_topic: "/mi_dog_real/operator_event"
-    audio_feedback_service: "/speech_text_play"
-    wake_event_topic: "/dog_wakeup"
-    continue_dialog_topic: "/continue_dialog"
+    audio_feedback_service: "/mi_desktop_48_b0_2d_7a_fe_40/speech_text_play"
+    wake_event_topic: "/mi_desktop_48_b0_2d_7a_fe_40/dog_wakeup"
+    continue_dialog_topic: "/mi_desktop_48_b0_2d_7a_fe_40/continue_dialog"
     manage_dialogue: true
-    wake_word_topic: "wake_word"
+    wake_word_topic: "/mi_desktop_48_b0_2d_7a_fe_40/wake_word"
     wake_word: "铁蛋铁蛋"
-    # Keep false for the stock default. Enable only to deliberately change it.
     publish_wake_word: false
     start_phrase: "启动"
     continue_phrase: "恢复"
     pause_phrase: "暂停"
     stop_phrase: "终止"
     touch_pause_enabled: true
+    # Verified on this robot: firmware reports state 3 for a hardware-recognized
+    # double tap, sometimes as several duplicate messages for one gesture.
     touch_double_tap_state: 3
     touch_lockout_sec: 1.5
     audio_feedback_enabled: true
-    # Offline built-in ready sound; avoids depending on cloud TTS during competition.
     audio_feedback_play_id: 9000
 
     sensor_timeout_sec: 1.0
@@ -50,7 +46,6 @@
     publish_rate_hz: 10.0
     stop_heartbeat_sec: 0.20
 
-    # Conservative envelope, lower than the documented slow gait (303) maxima.
     max_forward_mps: 0.25
     max_lateral_mps: 0.10
     max_yaw_rps: 0.40

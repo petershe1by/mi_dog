@@ -1,0 +1,21 @@
+/**:
+  ros__parameters:
+    operator_event_topic: "/mi_dog_real/operator_event"
+    stage_complete_topic: "/mi_dog_real/stage_complete"
+    state_topic: "/mi_dog_real/supervisor/state"
+    stage_topic: "/mi_dog_real/supervisor/current_stage"
+    pause_request_topic: "/mi_dog_real/supervisor/pause_request"
+    lie_down_request_topic: "/mi_dog_real/supervisor/lie_down_request"
+    run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
+    safe_to_lie_down_topic: "/mi_dog_real/supervisor/safe_to_lie_down"
+    safety_reason_topic: "/mi_dog_real/supervisor/lie_down_safety_reason"
+    odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
+    motion_status_topic: "/mi_desktop_48_b0_2d_7a_fe_40/motion_status"
+    bms_status_topic: "/mi_desktop_48_b0_2d_7a_fe_40/bms_status"
+    sensor_freshness_sec: 0.5
+    stable_hold_sec: 1.5
+    max_tilt_deg: 25.0
+    max_linear_speed: 0.03
+    max_angular_speed: 0.08
+    checkpoint_path: "/home/mi/mi_dog_ws/state/supervisor_checkpoint.txt"
+    initial_stage: 1

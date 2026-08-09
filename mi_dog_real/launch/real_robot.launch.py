@@ -1,5 +1,7 @@
 from launch import LaunchDescription
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
@@ -9,6 +11,12 @@ def generate_launch_description():
             executable="mi_dog_real_node",
             name="mi_dog_real",
             output="screen",
-            parameters=["config/real_robot.yaml"],
+            parameters=[
+                PathJoinSubstitution([
+                    FindPackageShare("mi_dog_real"),
+                    "config",
+                    "real_robot.yaml",
+                ])
+            ],
         ),
     ])

@@ -1,0 +1,17 @@
+[Unit]
+Description=Mi Dog sensor-only voice, touch, and race supervisor
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mi
+WorkingDirectory=/home/mi/mi_dog_ws
+ExecStart=/home/mi/mi_dog_ws/scripts/run_sensor_gate.sh
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target
