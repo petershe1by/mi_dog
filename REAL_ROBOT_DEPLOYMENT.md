@@ -93,10 +93,10 @@ A standing cardboard-box calibration then measured the front ultrasonic channel 
 candidate ultrasonic policy is stop at `<=0.35 m`, slow within `0.35..0.55 m`, require at
 least three consecutive ordinary detections, and reserve a single-frame path for an
 independently validated very-close emergency threshold. These values are not connected to
-motion until different materials, widths, lateral offsets, and low-speed dynamics are tested;
-head ToF needs a centre/upper 8x8 ROI instead of a whole-frame median.
+motion until different materials, widths, lateral offsets, and low-speed dynamics are tested.
+Head ToF is analysed separately below because its field of view points toward the ground.
 
-The bridge now exposes a separate read-only `/mi_dog_real/head_tof_roi_summary` as
+The bridge now exposes a separate read-only `/mi_dog_real/head_ground_roi_summary` as
 `[left-centre p25, left-centre median, right-centre p25, right-centre median]` in metres.
 Each statistic uses the central 4x4 pixels of the raw 8x8 sensor. This symmetric ROI is
 unchanged by the 180-degree raw-index reversal in Xiaomi's point-cloud utility. It remains
@@ -106,3 +106,10 @@ With the box removed while lying and wired charging, the ROI baseline was approx
 correctly cancelled a proposed standing sample because both BMS wired charging and the
 official `MotionStatus.CHARGING=14` were active. Status 14 now reports the explicit reason
 `motion_controller_charging_inhibited` instead of a generic controller fault.
+
+Recomputing Xiaomi's raw-index mapping and installation rotations shows that all head-ToF
+rays point downward by about 42 to 87 degrees in robot coordinates; the central 4x4 rays
+span roughly 56 to 78 degrees downward. These sensors are therefore ground/drop-off inputs,
+not frontal obstacle ranging. Future standing calibration should detect missing ground,
+sudden range increases, and left/right disagreement. Such evidence may stop motion but must
+never authorize forward motion by itself; ultrasonic and lidar remain the frontal sensors.

@@ -29,7 +29,7 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
     const auto proximity_topic = declare_parameter<std::string>(
         "proximity_summary_topic", "/mi_dog_real/proximity_summary");
     const auto head_roi_topic = declare_parameter<std::string>(
-        "head_tof_roi_topic", "/mi_dog_real/head_tof_roi_summary");
+        "head_tof_roi_topic", "/mi_dog_real/head_ground_roi_summary");
     const auto ultrasonic_topic = declare_parameter<std::string>(
         "ultrasonic_topic", "/mi_desktop_48_b0_2d_7a_fe_40/ultrasonic_payload");
     const auto head_tof_topic = declare_parameter<std::string>(
