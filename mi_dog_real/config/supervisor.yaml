@@ -12,6 +12,9 @@
     odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
     motion_status_topic: "/mi_desktop_48_b0_2d_7a_fe_40/motion_status"
     bms_status_topic: "/mi_desktop_48_b0_2d_7a_fe_40/bms_status"
+    foot_contact_topic: "/mi_dog_real/foot_contact_estimate"
+    # Official skin-manager logic treats contactEstimate > 0 as a foot on ground.
+    min_foot_contact_estimate: 0.0
     sensor_freshness_sec: 0.5
     stable_hold_sec: 1.5
     max_tilt_deg: 25.0

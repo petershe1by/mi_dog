@@ -57,9 +57,22 @@
 - `/mi_dog_real/supervisor/run_allowed`：只有 `RUNNING` 为真；
 - `/mi_dog_real/supervisor/pause_request` 与 `lie_down_request`。
 - `/mi_dog_real/supervisor/safe_to_lie_down` 与 `lie_down_safety_reason`：融合约 48 Hz
-  的 `/odom_out`、`motion_status` 和约 1 Hz 的 `bms_status`，要求姿态有效、横滚/俯仰
-  小于 25°、线速度小于 0.03 m/s、角速度小于 0.08 rad/s、控制器/BMS 无故障并稳定
-  持续 1.5 秒。任一数据过期即关闭许可。
+  的 `/odom_out`、`motion_status`、约 1 Hz 的 `bms_status` 和约 50 Hz 的四足接触估计，
+  要求姿态有效、横滚/俯仰小于 25°、线速度小于 0.03 m/s、角速度小于 0.08 rad/s、
+  四足均接触、控制器/BMS 无故障并稳定持续 1.5 秒。任一数据过期即关闭许可。
+
+`mi_dog_state_bridge_node` 只读订阅官方运动模块使用的 LCM `state_estimator`，把
+`contactEstimate[4]` 发布为 `/mi_dog_real/foot_contact_estimate`，顺序固定为
+`RF, LF, RR, LR`。官方皮肤管理代码以数值大于零判断腿未抬起，本包沿用相同语义，
+不再把 `MotionStatus.contact` 位掩码误当作压力传感器。2026-08-09 趴卧充电时实测四路
+均为 `0.5`，频率约 50 Hz。
+
+同一桥接节点还将超声、头部左右 8x8 ToF、后部左右 ToF 汇总到
+`/mi_dog_real/proximity_summary`，数组顺序为
+`[ultrasonic, head_left, head_right, rear_left, rear_right]`，单位米；ToF 使用有效正值
+的中位数，无效或不可用通道输出 NaN。趴卧充电现场基线约为
+`[0.21, 0.22, 0.21, 0.05, 0.05]`。这些距离目前仅供观测和后续标定，尚未进入趴下
+许可；必须在正常站立、前后无遮挡时重新标定，不能按趴卧值设置障碍阈值。
 
 检查点保存在 `/home/mi/mi_dog_ws/state/supervisor_checkpoint.txt`。进程或整机重启后
 只恢复赛段编号，状态强制回到 `DOWN_WAITING`，绝不自动恢复运动。暂停期间的赛段完成
@@ -68,11 +81,10 @@
 真机已安装并启用 `mi-dog-real-sensor.service`，它通过
 `scripts/run_sensor_gate.sh` 启动传感器安全门和 supervisor。该服务固定使用
 `enable_motion=false` 的配置；它开机可用，但还不能让机器狗执行六赛段动作。
-`lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、控制器和 BMS 的
+`lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、四足接触、控制器和 BMS 的
 只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为
-`wired_charging_motion_inhibited`。`MotionStatus.contact` 在本机协议中没有明确语义，
-因此没有凭猜测使用。足端接触语义、落脚面/边缘与周围空间检查完成前，仍不能连接真实
-趴下动作。
+`wired_charging_motion_inhibited`。落脚面/边缘与周围空间检查完成前，仍不能连接真实
+趴下动作；四足接触只能证明腿没有抬起，不能证明当前位置适合趴下。
 
 真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
 验收后系统被留在赛段1 `PAUSED`。

@@ -25,11 +25,12 @@ stock robot software was removed.
 
 Motion remains locked. The next acceptance gates are:
 
-1. Persist and rerun the sensor-only install.
-2. Add reversible camera start/stop handling.
-3. Verify the meaning of `MotionStatus.contact` or locate another documented foot-contact source.
-4. Port perception and replace all Gazebo-only state (`/model_states`, world coordinates).
-5. Validate emergency stop and zero-speed command semantics before any nonzero command.
+1. Calibrate foot-contact and proximity values while standing, unobstructed, and during a
+   separately approved controlled leg lift.
+2. Add ground-edge/clearance interpretation before connecting the lie-down request to posture motion.
+3. Port perception and replace all Gazebo-only state (`/model_states`, world coordinates).
+4. Validate an independent emergency stop and zero-speed command semantics before any nonzero command.
+5. Implement and separately accept each physical stage controller before an end-to-end run.
 
 ## Voice competition gate
 
@@ -58,8 +59,16 @@ and six physical stage controllers remain separate unproven gates.
 
 The next read-only gate now runs on the robot. `/odom_out` is continuous at about 48 Hz and
 provides a valid body quaternion plus twist. The supervisor combines it with `motion_status`
-and `bms_status`, requires a 1.5 s stable interval, and publishes
+and `bms_status`, plus the official LCM `state_estimator.contactEstimate[4]` bridged at about
+50 Hz in RF/LF/RR/LR order. It requires all four contact values to be positive and a 1.5 s
+stable interval, and publishes
 `/mi_dog_real/supervisor/safe_to_lie_down` plus a machine-readable reason. Wired charging
 always inhibits posture motion; on 2026-08-09 the live reason was
 `wired_charging_motion_inhibited`. This is an observable permission only and does not issue
 a lie-down command.
+
+The same read-only bridge publishes `/mi_dog_real/proximity_summary` in metres as
+`[ultrasonic, head-left median, head-right median, rear-left median, rear-right median]`.
+The live lying/charging baseline was approximately `[0.21, 0.22, 0.21, 0.05, 0.05]`.
+Proximity is deliberately not a safety gate yet: thresholds need a standing, unobstructed
+calibration and edge/ground interpretation before they can authorize a posture change.

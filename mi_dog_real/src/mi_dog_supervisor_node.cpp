@@ -12,6 +12,7 @@
 #include "protocol/msg/bms_status.hpp"
 #include "protocol/msg/motion_status.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float32_multi_array.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
@@ -66,6 +67,10 @@ class MiDogSupervisorNode final : public rclcpp::Node {
         "motion_status_topic", "/mi_desktop_48_b0_2d_7a_fe_40/motion_status");
     const auto bms_status_topic = declare_parameter<std::string>(
         "bms_status_topic", "/mi_desktop_48_b0_2d_7a_fe_40/bms_status");
+    const auto foot_contact_topic = declare_parameter<std::string>(
+        "foot_contact_topic", "/mi_dog_real/foot_contact_estimate");
+    min_foot_contact_estimate_ = declare_parameter<double>(
+        "min_foot_contact_estimate", 0.0);
     sensor_freshness_sec_ = declare_parameter<double>("sensor_freshness_sec", 0.5);
     stable_hold_sec_ = declare_parameter<double>("stable_hold_sec", 1.5);
     max_tilt_rad_ = declare_parameter<double>("max_tilt_deg", 25.0) * M_PI / 180.0;
@@ -118,6 +123,11 @@ class MiDogSupervisorNode final : public rclcpp::Node {
         bms_status_topic, 10,
         [this](protocol::msg::BmsStatus::ConstSharedPtr message) {
           handle_bms_status(*message);
+        });
+    foot_contact_sub_ = create_subscription<std_msgs::msg::Float32MultiArray>(
+        foot_contact_topic, rclcpp::SensorDataQoS(),
+        [this](std_msgs::msg::Float32MultiArray::ConstSharedPtr message) {
+          handle_foot_contact(*message);
         });
     safety_timer_ = create_wall_timer(
         std::chrono::milliseconds(100), [this]() { evaluate_lie_down_safety(); });
@@ -239,6 +249,16 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     have_bms_status_ = true;
   }
 
+  void handle_foot_contact(const std_msgs::msg::Float32MultiArray &message) {
+    foot_contact_valid_ = message.data.size() == 4 &&
+        std::all_of(message.data.begin(), message.data.end(), [this](float value) {
+          // Xiaomi's official skin-manager code treats contactEstimate > 0 as liftdown.
+          return std::isfinite(value) && value > min_foot_contact_estimate_;
+        });
+    last_foot_contact_time_ = now();
+    have_foot_contact_ = true;
+  }
+
   void evaluate_lie_down_safety() {
     const auto current_time = now();
     std::string reason = "ready";
@@ -271,6 +291,15 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     } else if (!motion_status_healthy_) {
       raw_safe = false;
       reason = "motion_controller_not_healthy";
+    } else if (!have_foot_contact_) {
+      raw_safe = false;
+      reason = "waiting_for_foot_contact";
+    } else if ((current_time - last_foot_contact_time_).seconds() > sensor_freshness_sec_) {
+      raw_safe = false;
+      reason = "stale_foot_contact";
+    } else if (!foot_contact_valid_) {
+      raw_safe = false;
+      reason = "not_all_feet_in_contact";
     } else if (!have_bms_status_) {
       raw_safe = false;
       reason = "waiting_for_bms_status";
@@ -391,6 +420,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<protocol::msg::MotionStatus>::SharedPtr motion_status_sub_;
   rclcpp::Subscription<protocol::msg::BmsStatus>::SharedPtr bms_status_sub_;
+  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr foot_contact_sub_;
   rclcpp::TimerBase::SharedPtr safety_timer_;
   double sensor_freshness_sec_{0.5};
   double stable_hold_sec_{1.5};
@@ -404,6 +434,8 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   bool have_bms_status_{false};
   bool bms_healthy_{false};
   bool wired_charging_{false};
+  bool have_foot_contact_{false};
+  bool foot_contact_valid_{false};
   bool stable_since_valid_{false};
   double roll_rad_{0.0};
   double pitch_rad_{0.0};
@@ -412,7 +444,9 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   rclcpp::Time last_odometry_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_motion_status_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_bms_status_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_foot_contact_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time stable_since_{0, 0, RCL_ROS_TIME};
+  double min_foot_contact_estimate_{0.0};
 };
 
 int main(int argc, char **argv) {

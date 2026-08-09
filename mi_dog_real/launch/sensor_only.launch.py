@@ -19,6 +19,12 @@ def generate_launch_description():
         ),
         Node(
             package="mi_dog_real",
+            executable="mi_dog_state_bridge_node",
+            name="mi_dog_state_bridge",
+            output="screen",
+        ),
+        Node(
+            package="mi_dog_real",
             executable="mi_dog_supervisor_node",
             name="mi_dog_supervisor",
             output="screen",
