@@ -23,6 +23,7 @@ constexpr int kFirstStage = 1;
 constexpr int kLastStage = 6;
 // Xiaomi motion_action defines INT32_MIN as the normal/no-error motor sentinel.
 constexpr int32_t kMotorNormal = std::numeric_limits<int32_t>::min();
+constexpr int8_t kMotionSwitchCharging = 14;
 
 enum class SupervisorState {
   kDownWaiting,
@@ -222,6 +223,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   }
 
   void handle_motion_status(const protocol::msg::MotionStatus &message) {
+    motion_switch_status_ = message.switch_status;
     motion_status_healthy_ = message.switch_status == 0 &&
                              message.ori_error == 0 &&
                              message.footpos_error == 0 &&
@@ -297,7 +299,8 @@ class MiDogSupervisorNode final : public rclcpp::Node {
       reason = "stale_motion_status";
     } else if (!motion_status_healthy_) {
       raw_safe = false;
-      reason = "motion_controller_not_healthy";
+      reason = motion_switch_status_ == kMotionSwitchCharging ?
+          "motion_controller_charging_inhibited" : "motion_controller_not_healthy";
     } else if (!have_foot_contact_) {
       raw_safe = false;
       reason = "waiting_for_foot_contact";
@@ -438,6 +441,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   bool have_motion_status_{false};
   bool odometry_valid_{false};
   bool motion_status_healthy_{false};
+  int8_t motion_switch_status_{0};
   bool have_bms_status_{false};
   bool bms_healthy_{false};
   bool wired_charging_{false};

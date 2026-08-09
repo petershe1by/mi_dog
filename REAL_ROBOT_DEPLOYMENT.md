@@ -95,3 +95,14 @@ least three consecutive ordinary detections, and reserve a single-frame path for
 independently validated very-close emergency threshold. These values are not connected to
 motion until different materials, widths, lateral offsets, and low-speed dynamics are tested;
 head ToF needs a centre/upper 8x8 ROI instead of a whole-frame median.
+
+The bridge now exposes a separate read-only `/mi_dog_real/head_tof_roi_summary` as
+`[left-centre p25, left-centre median, right-centre p25, right-centre median]` in metres.
+Each statistic uses the central 4x4 pixels of the raw 8x8 sensor. This symmetric ROI is
+unchanged by the 180-degree raw-index reversal in Xiaomi's point-cloud utility. It remains
+diagnostic-only until unobstructed and box-distance measurements establish useful thresholds.
+With the box removed while lying and wired charging, the ROI baseline was approximately
+`0.212/0.220 m` on the left and `0.208/0.216 m` on the right (p25/median). The supervisor
+correctly cancelled a proposed standing sample because both BMS wired charging and the
+official `MotionStatus.CHARGING=14` were active. Status 14 now reports the explicit reason
+`motion_controller_charging_inhibited` instead of a generic controller fault.

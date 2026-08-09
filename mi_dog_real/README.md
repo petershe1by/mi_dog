@@ -70,6 +70,8 @@
 `MotionStatus.motor_error` 不能按“非零即故障”解释：小米官方 `motion_action` 把
 `INT32_MIN (-2147483648)` 定义为 `kMotorNormal`，而这台固件在不同状态下也可能上报
 `0`。supervisor 同时接受这两个正常值，其他值仍按电机故障闭锁。
+官方 `MotionStatus.CHARGING=14` 会继续闭锁姿态动作，但诊断原因单独显示为
+`motion_controller_charging_inhibited`，不再误导为笼统控制器故障。
 
 同一桥接节点还将超声、头部左右 8x8 ToF、后部左右 ToF 汇总到
 `/mi_dog_real/proximity_summary`，数组顺序为
@@ -109,6 +111,15 @@
 宽度和左右偏置的障碍物验证漏检/误检，并确认慢速行走时的动态响应。当前头部 ToF 的
 64 点整体中值没有随纸箱距离变化，不能作为正前方纸箱距离；后续应分析 8x8 原始阵列的
 中心/上部 ROI，而不是继续使用整幅中值。
+
+为此桥接节点新增只读话题 `/mi_dog_real/head_tof_roi_summary`，顺序为
+`[left_center_p25, left_center_median, right_center_p25, right_center_median]`，单位米。
+ROI 是每个原始 8×8 阵列的中心 4×4；官方点云脚本使用的 180° 索引反转不会改变这个
+对称区域。25 分位用于观察只覆盖部分像素的障碍，中值用于判断覆盖较大的目标。该话题
+仍是诊断量，不参与运动许可，必须经过无遮挡和三档纸箱复测后才能选阈值。
+趴卧充电、纸箱已移除时，中心 ROI 实测约为左侧 `0.212/0.220 m`、右侧
+`0.208/0.216 m`（25 分位/中值）。由于充电状态为 `switch_status=14` 且 BMS 明确
+`power_wired_charging=true`，安全门正确取消了后续站立采样。
 
 真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
 验收后系统被留在赛段1 `PAUSED`。

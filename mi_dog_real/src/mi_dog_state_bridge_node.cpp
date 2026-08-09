@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
@@ -27,6 +28,8 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
         "foot_contact_topic", "/mi_dog_real/foot_contact_estimate");
     const auto proximity_topic = declare_parameter<std::string>(
         "proximity_summary_topic", "/mi_dog_real/proximity_summary");
+    const auto head_roi_topic = declare_parameter<std::string>(
+        "head_tof_roi_topic", "/mi_dog_real/head_tof_roi_summary");
     const auto ultrasonic_topic = declare_parameter<std::string>(
         "ultrasonic_topic", "/mi_desktop_48_b0_2d_7a_fe_40/ultrasonic_payload");
     const auto head_tof_topic = declare_parameter<std::string>(
@@ -36,6 +39,7 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
 
     contact_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>(contact_topic, 10);
     proximity_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>(proximity_topic, 10);
+    head_roi_pub_ = create_publisher<std_msgs::msg::Float32MultiArray>(head_roi_topic, 10);
     ultrasonic_sub_ = create_subscription<sensor_msgs::msg::Range>(
         ultrasonic_topic, rclcpp::SensorDataQoS(),
         [this](sensor_msgs::msg::Range::ConstSharedPtr message) {
@@ -50,6 +54,14 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
               median_valid(message->left_head.data) : nan();
           head_right_m_ = message->right_head.data_available ?
               median_valid(message->right_head.data) : nan();
+          const auto left_roi = message->left_head.data_available ?
+              center_roi_stats(message->left_head.data) : std::array<float, 2>{nan(), nan()};
+          const auto right_roi = message->right_head.data_available ?
+              center_roi_stats(message->right_head.data) : std::array<float, 2>{nan(), nan()};
+          head_left_roi_p25_m_ = left_roi[0];
+          head_left_roi_median_m_ = left_roi[1];
+          head_right_roi_p25_m_ = right_roi[0];
+          head_right_roi_median_m_ = right_roi[1];
         });
     rear_tof_sub_ = create_subscription<protocol::msg::RearTofPayload>(
         rear_tof_topic, rclcpp::SensorDataQoS(),
@@ -61,7 +73,7 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
               median_valid(message->right_rear.data) : nan();
         });
     proximity_timer_ = create_wall_timer(
-        std::chrono::milliseconds(100), [this]() { publish_proximity(); });
+        std::chrono::milliseconds(100), [this]() { publish_proximity_and_roi(); });
     lcm_ = std::make_unique<lcm::LCM>(lcm_url);
     if (!lcm_->good()) {
       throw std::runtime_error("Failed to initialize state_estimator LCM subscriber");
@@ -106,14 +118,45 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
     return *middle;
   }
 
-  void publish_proximity() {
+  static std::array<float, 2> center_roi_stats(const std::vector<float> &input) {
+    if (input.size() != 64) {
+      return {nan(), nan()};
+    }
+    std::vector<float> valid;
+    valid.reserve(16);
+    // Central 4x4 pixels of the raw 8x8 array. A full 180-degree index reversal
+    // used by Xiaomi's point-cloud script maps this symmetric ROI onto itself.
+    for (size_t row = 2; row <= 5; ++row) {
+      for (size_t column = 2; column <= 5; ++column) {
+        const float value = input[row * 8 + column];
+        if (std::isfinite(value) && value > 0.0f) {
+          valid.push_back(value);
+        }
+      }
+    }
+    if (valid.empty()) {
+      return {nan(), nan()};
+    }
+    std::sort(valid.begin(), valid.end());
+    const size_t p25_index = (valid.size() - 1) / 4;
+    const size_t median_index = valid.size() / 2;
+    return {valid[p25_index], valid[median_index]};
+  }
+
+  void publish_proximity_and_roi() {
     std_msgs::msg::Float32MultiArray output;
+    std_msgs::msg::Float32MultiArray roi_output;
     {
       std::lock_guard<std::mutex> lock(proximity_mutex_);
       // Order: ultrasonic, head-left, head-right, rear-left, rear-right (metres).
       output.data = {ultrasonic_m_, head_left_m_, head_right_m_, rear_left_m_, rear_right_m_};
+      // Central 4x4 ROI, metres: left p25, left median, right p25, right median.
+      roi_output.data = {
+          head_left_roi_p25_m_, head_left_roi_median_m_,
+          head_right_roi_p25_m_, head_right_roi_median_m_};
     }
     proximity_pub_->publish(output);
+    head_roi_pub_->publish(roi_output);
   }
 
   void handle_state_estimator(
@@ -131,6 +174,7 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
   std::thread lcm_thread_;
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr contact_pub_;
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr proximity_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr head_roi_pub_;
   rclcpp::Subscription<sensor_msgs::msg::Range>::SharedPtr ultrasonic_sub_;
   rclcpp::Subscription<protocol::msg::HeadTofPayload>::SharedPtr head_tof_sub_;
   rclcpp::Subscription<protocol::msg::RearTofPayload>::SharedPtr rear_tof_sub_;
@@ -141,6 +185,10 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
   float head_right_m_{nan()};
   float rear_left_m_{nan()};
   float rear_right_m_{nan()};
+  float head_left_roi_p25_m_{nan()};
+  float head_left_roi_median_m_{nan()};
+  float head_right_roi_p25_m_{nan()};
+  float head_right_roi_median_m_{nan()};
 };
 
 int main(int argc, char **argv) {
