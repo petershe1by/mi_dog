@@ -72,3 +72,16 @@ The same read-only bridge publishes `/mi_dog_real/proximity_summary` in metres a
 The live lying/charging baseline was approximately `[0.21, 0.22, 0.21, 0.05, 0.05]`.
 Proximity is deliberately not a safety gate yet: thresholds need a standing, unobstructed
 calibration and edge/ground interpretation before they can authorize a posture change.
+
+The first no-walk standing calibration completed on 2026-08-09. Recovery stand returned
+`mode=12, progress=100`; foot contact stayed `[0.5, 0.5, 0.5, 0.5]`. Head ToF was about
+`0.37/0.37 m`, rear ToF about `0.20/0.195 m`, while the front ultrasonic reading jumped
+between roughly `0.34` and `0.57 m`. The ultrasonic channel therefore needs temporal
+filtering rather than a single-frame authorization threshold. The dog returned to lying
+with `mode=7, progress=100`.
+
+This test also exposed a firmware-semantics bug: Xiaomi `motion_action` defines
+`INT32_MIN (-2147483648)` as `kMotorNormal`. The supervisor now accepts both that sentinel
+and zero as healthy motor entries; every other motor error value remains fail-closed. The
+ARM64 rebuild passed, the sensor-only service restarted active, and the live safety reason
+returned to `ready`.

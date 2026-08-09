@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -19,6 +21,8 @@
 namespace {
 constexpr int kFirstStage = 1;
 constexpr int kLastStage = 6;
+// Xiaomi motion_action defines INT32_MIN as the normal/no-error motor sentinel.
+constexpr int32_t kMotorNormal = std::numeric_limits<int32_t>::min();
 
 enum class SupervisorState {
   kDownWaiting,
@@ -223,7 +227,10 @@ class MiDogSupervisorNode final : public rclcpp::Node {
                              message.footpos_error == 0 &&
                              std::all_of(
                                  message.motor_error.begin(), message.motor_error.end(),
-                                 [](int32_t error) { return error == 0; });
+                                 [](int32_t error) {
+                                   // Observed firmware uses both 0 and kMotorNormal when healthy.
+                                   return error == 0 || error == kMotorNormal;
+                                 });
     last_motion_status_time_ = now();
     have_motion_status_ = true;
   }

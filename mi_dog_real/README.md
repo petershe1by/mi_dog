@@ -67,6 +67,10 @@
 不再把 `MotionStatus.contact` 位掩码误当作压力传感器。2026-08-09 趴卧充电时实测四路
 均为 `0.5`，频率约 50 Hz。
 
+`MotionStatus.motor_error` 不能按“非零即故障”解释：小米官方 `motion_action` 把
+`INT32_MIN (-2147483648)` 定义为 `kMotorNormal`，而这台固件在不同状态下也可能上报
+`0`。supervisor 同时接受这两个正常值，其他值仍按电机故障闭锁。
+
 同一桥接节点还将超声、头部左右 8x8 ToF、后部左右 ToF 汇总到
 `/mi_dog_real/proximity_summary`，数组顺序为
 `[ultrasonic, head_left, head_right, rear_left, rear_right]`，单位米；ToF 使用有效正值
@@ -85,6 +89,12 @@
 只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为
 `wired_charging_motion_inhibited`。落脚面/边缘与周围空间检查完成前，仍不能连接真实
 趴下动作；四足接触只能证明腿没有抬起，不能证明当前位置适合趴下。
+
+2026-08-09 首次站立标定中，起立响应为 `mode=12, progress=100`，全程没有速度指令。
+四足接触仍为 `[0.5, 0.5, 0.5, 0.5]`；站立测距约为头部左右
+`0.37/0.37 m`、后部左右 `0.20/0.195 m`，前超声在约 `0.34..0.57 m` 间跳变。
+因此前超声必须增加时间滤波和异常跳变处理，不能用单帧阈值授权运动。标定结束后
+已执行 `mode=7` 趴下并收到 `progress=100`。
 
 真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
 验收后系统被留在赛段1 `PAUSED`。
