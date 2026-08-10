@@ -78,6 +78,10 @@
 - 当前离线启动基础清单：`deployment_manifest_20260810T151435+0800.txt`，schema v2，
   `source_commit=ad6c06a`，文件 SHA256 为
   `612a13929260f2e23b83cfbf915ed1e791f933c52cf2c50049f4bbed2fb7c311`。
+- 当前语音安全回退清单：`deployment_manifest_20260810T173628+0800.txt`，`source_commit=37d97eb`，
+  SHA256 为 `76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`；实效值包含
+  `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、`run_allowed=false`、
+  `emergency_stop=true` 和 `input_missing`。
 
 ## 当前阻塞项
 

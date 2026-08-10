@@ -302,6 +302,12 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
 这两个值只允许离线观测缺失的传感器，不构成运动旁路。清单脚本新增 `manage_dialogue` 实效参数，
 以后每次部署都必须证明该值为 false。
 
+最终清单为 `deployment_manifest_20260810T173628+0800.txt`，捕获时间 `17:36:48`，
+`source_commit=37d97eb`，SHA256 为
+`76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`。清单实测服务 active、
+四节点单实例、`enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、
+`run_allowed=false`、`emergency_stop=true`、`estop_guard_status=input_missing`。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，

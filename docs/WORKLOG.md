@@ -173,6 +173,9 @@
   `input_missing`，四节点 active 且持续无运动输出。
 - 清单脚本新增 `manage_dialogue` 实效参数。sensor-only launch 中两项 readiness=false 是有意
   允许只读观测的覆盖；运动总开关 false 时节点在这些门之前直接返回，不发布运动命令。
+- 最终清单 `deployment_manifest_20260810T173628+0800.txt` 绑定 `37d97eb`，SHA256
+  `76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`；其中
+  `manage_dialogue=False`、`enable_motion=False`、急停 true、状态 `DOWN_WAITING`。
 
 ## 如何继续记录
 
