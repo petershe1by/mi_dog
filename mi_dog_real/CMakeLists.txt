@@ -25,9 +25,13 @@ add_executable(mi_dog_state_bridge_node src/mi_dog_state_bridge_node.cpp)
 target_link_libraries(mi_dog_state_bridge_node lcm)
 ament_target_dependencies(mi_dog_state_bridge_node protocol rclcpp sensor_msgs std_msgs)
 
+add_executable(mi_dog_estop_guard_node src/mi_dog_estop_guard_node.cpp)
+ament_target_dependencies(mi_dog_estop_guard_node rclcpp std_msgs)
+
 install(TARGETS mi_dog_real_node mi_dog_supervisor_node mi_dog_state_bridge_node
+  mi_dog_estop_guard_node
   DESTINATION lib/${PROJECT_NAME})
-install(PROGRAMS scripts/ground_tof_capture.py
+install(PROGRAMS scripts/ground_tof_capture.py scripts/estop_guard_isolated_test.py
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})

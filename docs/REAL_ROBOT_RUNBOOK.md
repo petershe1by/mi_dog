@@ -4,6 +4,29 @@
 
 当前禁止：设置 `enable_motion=true`、充电时执行姿态动作、直接运行整场自治。
 
+## 急停守卫
+
+正式无运动服务已启动 `mi_dog_estop_guard_node`。原始输入为
+`/mi_dog_real/emergency_stop_input`：`true` 表示实体急停按下，`false` 表示按钮释放且链路
+健康。守卫在启动、输入缺失或超过 0.25 秒未更新时都向
+`/mi_dog_real/emergency_stop` 以 20 Hz 发布 `true`。
+
+即使首次收到 `false` 也不会解锁；必须先看到一次 `true`，再看到 `false`，形成操作者明确的
+按下—释放周期。链路超时后重新连接同样需要新的按下—释放周期。这是防止设备上电、插线或
+单根信号线故障导致自动放行的设计。当前没有实体输入设备，因此正式状态应保持
+`input_missing` 和急停 `true`；这不妨碍 `enable_motion=false` 的只读诊断。
+
+检查命令：
+
+```bash
+ros2 topic info /mi_dog_real/emergency_stop --verbose
+ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
+  --qos-durability transient_local --qos-reliability reliable
+```
+
+软件守卫不能代替实体按钮。接入并完成断线、按钮保持、释放重置和停止延迟验收前，仍禁止
+非零运动。
+
 ## 现场角色与环境
 
 - 一人负责电脑和口令，一人靠近独立急停；未完成独立急停验收前不做非零运动。
@@ -144,7 +167,7 @@ install -m 0755 /path/to/capture_deployment_manifest.sh \
 /home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh --source-commit COMMIT
 ```
 
-工具要求三种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
+工具要求四种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
 不要在存在重复节点时相信 `ros2 param get /mi_dog_real ...` 的单次结果。
 
 不得运行赛事镜像中的 `scp_to_cyberdog.sh`；它会删除或覆盖原厂运控目录。

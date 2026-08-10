@@ -2,12 +2,6 @@
 
 这个包与 `cyberdog_autonomy`（Gazebo/LCM 仿真）完全隔离：不改 Dockerfile、不替换仿真控制器，也不把 x86 仿真镜像复制到狗上。
 
-项目交接、现场操作、全部测量数据和验收状态分别见
-[`../docs/PROJECT_HANDOFF.md`](../docs/PROJECT_HANDOFF.md)、
-[`../docs/REAL_ROBOT_RUNBOOK.md`](../docs/REAL_ROBOT_RUNBOOK.md)、
-[`../docs/REAL_ROBOT_TEST_DATA.md`](../docs/REAL_ROBOT_TEST_DATA.md) 和
-[`../docs/REAL_ROBOT_ACCEPTANCE.md`](../docs/REAL_ROBOT_ACCEPTANCE.md)。
-
 ## 已实现的安全边界
 
 - 默认 `enable_motion=false`：只订阅相机、雷达和姿态，绝不发布运动指令。
@@ -15,6 +9,10 @@
 - 按配置要求的相机、雷达和机身姿态数据都在 1 秒内到达，才允许转发 `/mi_dog_real/safe_cmd_vel`。
 - 300 ms 指令超时、任一传感器失联时，发送官方 `motion_servo_cmd` 停止命令。
 - 默认要求 `/mi_dog_real/emergency_stop` 持续发布 `false` 心跳；心跳超过 0.5 秒或收到 `true` 都会进入停止状态。
+- `mi_dog_estop_guard_node` 将未来独立硬件的
+  `/mi_dog_real/emergency_stop_input` 转为上述心跳：启动、输入缺失或超过 0.25 秒均持续发布
+  `true`。首次 `false` 不会解锁，必须先观察一次按下 `true` 再释放 `false`；断线恢复后也
+  必须重复按下—释放周期。
 - 默认还要求 supervisor 的 `/mi_dog_real/supervisor/run_allowed` 持续为真；许可缺失、为假或
   超过 0.5 秒未刷新都会发送停止心跳，不能仅凭语音门或速度输入绕过 supervisor。
 - 拒绝 NaN/Inf 指令；IMU 四元数归一化后执行横滚/俯仰门控，雷达使用前向扇区有效样本做减速和停车。
@@ -95,6 +93,9 @@
 真机已安装并启用 `mi-dog-real-sensor.service`，它通过
 `scripts/run_sensor_gate.sh` 启动传感器安全门和 supervisor。该服务固定使用
 `enable_motion=false` 的配置；它开机可用，但还不能让机器狗执行六赛段动作。
+同一服务也启动急停守卫；当前没有实体输入生产者，所以它按设计保持
+`input_missing/output_asserted=true`。ARM64 隔离测试已通过启动、首次 false、按下/释放、
+超时、重连和再次按下/释放八阶段，但这不能替代实体按钮和线缆验收。
 `lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、四足接触、控制器和 BMS 的
 只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为
 `wired_charging_motion_inhibited`。落脚面/边缘与周围空间检查完成前，仍不能连接真实
@@ -180,14 +181,12 @@ ros2 run mi_dog_real ground_tof_capture.py --samples 20 --timeout 15
 更低的真实目标，因此家中只做静止覆盖/材质诊断；几何落差阈值必须在有防坠保护、人员
 可远程更换目标板的正式工装上标定。
 
-真人验收曾覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`。
-2026-08-10 最新正式服务重启检查为 `DOWN_WAITING`、`run_allowed=false`；机器狗保持趴卧。
+真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
+验收后系统被留在赛段1 `PAUSED`。
 
 ## 首次接入（只读探测）
 
-这台参赛狗已经通过物理网口确认主控地址为 `192.168.44.1`。接入其他设备时仍须重新向
-赛事方确认端口、IP 和权限；不要按 CyberDog 1 的 `192.168.55.*` 教程操作，也不要运行
-竞赛镜像中的 `scp_to_cyberdog.sh`。
+先由赛事方确认 CyberDog 2 的 Type-C 数据模式、官方 USB-C 网卡/转接方案、IP 和登录权限。不要按 CyberDog 1 的 `192.168.55.*` 教程操作，也不要在未确认网络前运行竞赛镜像中的 `scp_to_cyberdog.sh`。
 
 在机器人官方 `cyberdog_ws`/ROS 2 环境中建立独立工作区后构建：
 

@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    # A separate hardware-interface process must publish the current physical
+    # button state continuously: true=pressed, false=released and healthy.
+    input_topic: "/mi_dog_real/emergency_stop_input"
+    output_topic: "/mi_dog_real/emergency_stop"
+    status_topic: "/mi_dog_real/emergency_stop_guard/status"
+    input_timeout_sec: 0.25
+    publish_rate_hz: 20.0

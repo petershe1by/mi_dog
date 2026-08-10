@@ -32,4 +32,13 @@ def generate_launch_description():
                 "/home/mi/mi_dog_ws/src/mi_dog_real/config/supervisor.yaml",
             ],
         ),
+        Node(
+            package="mi_dog_real",
+            executable="mi_dog_estop_guard_node",
+            name="mi_dog_estop_guard",
+            output="screen",
+            parameters=[
+                "/home/mi/mi_dog_ws/src/mi_dog_real/config/estop_guard.yaml",
+            ],
+        ),
     ])

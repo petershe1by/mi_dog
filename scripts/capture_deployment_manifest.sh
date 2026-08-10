@@ -56,8 +56,10 @@ files=(
   "$install_root/lib/mi_dog_real/mi_dog_real_node"
   "$install_root/lib/mi_dog_real/mi_dog_supervisor_node"
   "$install_root/lib/mi_dog_real/mi_dog_state_bridge_node"
+  "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node"
   "$source_root/config/this_robot_sensor_only.yaml"
   "$source_root/config/supervisor.yaml"
+  "$source_root/config/estop_guard.yaml"
   "$workspace/scripts/run_sensor_gate.sh"
   "$workspace/scripts/capture_deployment_manifest.sh"
   "/etc/systemd/system/mi-dog-real-sensor.service"
@@ -86,6 +88,7 @@ require_single_process() {
 real_node_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_real_node" mi_dog_real_node)"
 supervisor_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_supervisor_node" mi_dog_supervisor_node)"
 bridge_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_state_bridge_node" mi_dog_state_bridge_node)"
+estop_guard_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node" mi_dog_estop_guard_node)"
 
 read_param() {
   local name="$1"
@@ -100,7 +103,8 @@ read_param() {
 read_topic_once() {
   local topic="$1"
   local message_kind="$2"
-  python3 - "$topic" "$message_kind" <<'PY'
+  local durability="${3:-transient_local}"
+  python3 - "$topic" "$message_kind" "$durability" <<'PY'
 import sys
 import time
 
@@ -109,14 +113,18 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool, String
 
-topic, message_kind = sys.argv[1:]
+topic, message_kind, durability = sys.argv[1:]
 message_type = {"bool": Bool, "string": String}[message_kind]
 value = None
 rclpy.init()
 node = Node("mi_dog_deployment_manifest_probe")
 qos = QoSProfile(
     depth=1,
-    durability=DurabilityPolicy.TRANSIENT_LOCAL,
+    durability=(
+        DurabilityPolicy.TRANSIENT_LOCAL
+        if durability == "transient_local"
+        else DurabilityPolicy.VOLATILE
+    ),
     reliability=ReliabilityPolicy.RELIABLE,
 )
 
@@ -146,10 +154,12 @@ effective_require_estop_ready="$(read_param require_estop_ready)"
 effective_require_supervisor_run_allowed="$(read_param require_supervisor_run_allowed)"
 supervisor_state="$(read_topic_once /mi_dog_real/supervisor/state string)"
 run_allowed="$(read_topic_once /mi_dog_real/supervisor/run_allowed bool)"
+emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
+estop_guard_status="$(read_topic_once /mi_dog_real/emergency_stop_guard/status string)"
 
 for value in "$effective_enable_motion" "$effective_require_sensor_ready" \
              "$effective_require_estop_ready" "$effective_require_supervisor_run_allowed" \
-             "$supervisor_state" "$run_allowed"; do
+             "$supervisor_state" "$run_allowed" "$emergency_stop" "$estop_guard_status"; do
   if [[ -z "$value" ]]; then
     echo "A required live deployment value was empty; manifest not written." >&2
     exit 1
@@ -167,6 +177,7 @@ done
   echo "mi_dog_real_node_pid=$real_node_pid"
   echo "mi_dog_supervisor_node_pid=$supervisor_pid"
   echo "mi_dog_state_bridge_node_pid=$bridge_pid"
+  echo "mi_dog_estop_guard_node_pid=$estop_guard_pid"
   echo "ros_distro=${ROS_DISTRO:-unknown}"
   echo "ros_domain_id=${ROS_DOMAIN_ID:-unknown}"
   echo "rmw_implementation=${RMW_IMPLEMENTATION:-unknown}"
@@ -176,6 +187,8 @@ done
   echo "require_supervisor_run_allowed=$effective_require_supervisor_run_allowed"
   echo "supervisor_state=$supervisor_state"
   echo "run_allowed=$run_allowed"
+  echo "emergency_stop=$emergency_stop"
+  echo "estop_guard_status=$estop_guard_status"
   echo "sha256_begin"
   sha256sum "${files[@]}"
   echo "sha256_end"
