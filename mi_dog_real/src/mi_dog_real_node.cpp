@@ -66,6 +66,8 @@ class MiDogRealNode final : public rclcpp::Node {
     require_pose_ready_ = declare_parameter<bool>("require_pose_ready", true);
     require_estop_ready_ = declare_parameter<bool>("require_estop_ready", true);
     require_voice_start_ = declare_parameter<bool>("require_voice_start", false);
+    require_supervisor_run_allowed_ =
+        declare_parameter<bool>("require_supervisor_run_allowed", true);
     const auto camera_topic = declare_parameter<std::string>("camera_topic", "/image");
     const auto lidar_topic = declare_parameter<std::string>("lidar_topic", "/scan");
     const auto pose_topic = declare_parameter<std::string>("pose_topic", "/pose_filtered");
@@ -81,6 +83,8 @@ class MiDogRealNode final : public rclcpp::Node {
         declare_parameter<std::string>("race_enabled_topic", "/mi_dog_real/race_enabled");
     const auto operator_event_topic =
         declare_parameter<std::string>("operator_event_topic", "/mi_dog_real/operator_event");
+    const auto supervisor_run_allowed_topic = declare_parameter<std::string>(
+        "supervisor_run_allowed_topic", "/mi_dog_real/supervisor/run_allowed");
     const auto audio_feedback_service =
         declare_parameter<std::string>("audio_feedback_service", "/speech_text_play");
     const auto wake_event_topic =
@@ -103,6 +107,7 @@ class MiDogRealNode final : public rclcpp::Node {
     sensor_timeout_sec_ = declare_parameter<double>("sensor_timeout_sec", 1.0);
     estop_timeout_sec_ = declare_parameter<double>("estop_timeout_sec", 0.50);
     command_timeout_sec_ = declare_parameter<double>("command_timeout_sec", 0.30);
+    supervisor_timeout_sec_ = declare_parameter<double>("supervisor_timeout_sec", 0.50);
     const auto publish_rate_hz = declare_parameter<double>("publish_rate_hz", 10.0);
     max_forward_mps_ = declare_parameter<double>("max_forward_mps", 0.25);
     max_lateral_mps_ = declare_parameter<double>("max_lateral_mps", 0.10);
@@ -118,7 +123,8 @@ class MiDogRealNode final : public rclcpp::Node {
     stop_heartbeat_sec_ = declare_parameter<double>("stop_heartbeat_sec", 0.20);
 
     if (sensor_timeout_sec_ <= 0.0 || estop_timeout_sec_ <= 0.0 ||
-        command_timeout_sec_ <= 0.0 || publish_rate_hz <= 0.0 ||
+        command_timeout_sec_ <= 0.0 || supervisor_timeout_sec_ <= 0.0 ||
+        publish_rate_hz <= 0.0 ||
         max_forward_mps_ <= 0.0 || max_lateral_mps_ <= 0.0 || max_yaw_rps_ <= 0.0 ||
         max_forward_accel_mps2_ <= 0.0 || max_lateral_accel_mps2_ <= 0.0 ||
         max_yaw_accel_rps2_ <= 0.0 || step_height_m_ <= 0.0 ||
@@ -247,6 +253,12 @@ class MiDogRealNode final : public rclcpp::Node {
           inhibit_race("touch double tap", "PAUSE_TOUCH");
         });
     motion_pub_ = create_publisher<protocol::msg::MotionServoCmd>(motion_topic, 10);
+    supervisor_run_allowed_sub_ = create_subscription<std_msgs::msg::Bool>(
+        supervisor_run_allowed_topic, rclcpp::QoS(1).transient_local().reliable(),
+        [this](std_msgs::msg::Bool::ConstSharedPtr allowed) {
+          supervisor_run_allowed_ = allowed->data;
+          last_supervisor_run_allowed_ = now();
+        });
     race_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
         race_enabled_topic, rclcpp::QoS(1).transient_local().reliable());
     wake_word_pub_ = create_publisher<std_msgs::msg::String>(wake_word_topic, 2);
@@ -415,6 +427,15 @@ class MiDogRealNode final : public rclcpp::Node {
           "Motion inhibited: waiting for wake word and exact voice start phrase.");
       return;
     }
+    if (require_supervisor_run_allowed_ &&
+        (!recent(last_supervisor_run_allowed_, supervisor_timeout_sec_) ||
+         !supervisor_run_allowed_)) {
+      publish_stop();
+      RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000,
+          "Motion inhibited: supervisor run permission is false, missing, or stale.");
+      return;
+    }
     if (require_sensor_ready_ && !sensors_ready()) {
       publish_stop();
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000,
@@ -466,6 +487,7 @@ class MiDogRealNode final : public rclcpp::Node {
   bool require_pose_ready_{true};
   bool require_estop_ready_{true};
   bool require_voice_start_{false};
+  bool require_supervisor_run_allowed_{true};
   bool publish_wake_word_{false};
   bool touch_pause_enabled_{true};
   bool audio_feedback_enabled_{true};
@@ -473,6 +495,7 @@ class MiDogRealNode final : public rclcpp::Node {
   bool voice_enabled_{true};
   bool stop_sent_{false};
   bool emergency_stop_{false};
+  bool supervisor_run_allowed_{false};
   bool image_valid_{false};
   bool lidar_valid_{false};
   bool pose_valid_{false};
@@ -480,6 +503,7 @@ class MiDogRealNode final : public rclcpp::Node {
   double sensor_timeout_sec_{1.0};
   double estop_timeout_sec_{0.50};
   double command_timeout_sec_{0.30};
+  double supervisor_timeout_sec_{0.50};
   double max_forward_mps_{0.25};
   double max_lateral_mps_{0.10};
   double max_yaw_rps_{0.40};
@@ -512,6 +536,7 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Time last_pose_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_estop_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_command_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_supervisor_run_allowed_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_stop_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_touch_pause_{0, 0, RCL_ROS_TIME};
   geometry_msgs::msg::Twist command_{};
@@ -521,6 +546,7 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr estop_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr voice_command_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr supervisor_run_allowed_sub_;
   rclcpp::Subscription<protocol::msg::TouchStatus>::SharedPtr touch_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr wake_event_sub_;
   rclcpp::Publisher<protocol::msg::MotionServoCmd>::SharedPtr motion_pub_;

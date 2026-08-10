@@ -10,6 +10,8 @@
     require_pose_ready: true
     require_estop_ready: true
     require_voice_start: true
+    require_supervisor_run_allowed: true
+    supervisor_timeout_sec: 0.5
 
     camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
     lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
@@ -21,6 +23,7 @@
     touch_topic: "/mi_desktop_48_b0_2d_7a_fe_40/touch_status"
     race_enabled_topic: "/mi_dog_real/race_enabled"
     operator_event_topic: "/mi_dog_real/operator_event"
+    supervisor_run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
     audio_feedback_service: "/mi_desktop_48_b0_2d_7a_fe_40/speech_text_play"
     wake_event_topic: "/mi_desktop_48_b0_2d_7a_fe_40/dog_wakeup"
     continue_dialog_topic: "/mi_desktop_48_b0_2d_7a_fe_40/continue_dialog"

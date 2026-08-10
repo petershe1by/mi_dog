@@ -11,6 +11,9 @@
     require_estop_ready: true
     # Competition motion remains stopped until an exact recognized phrase arrives.
     require_voice_start: true
+    # Fail closed unless the independent race supervisor continuously permits motion.
+    require_supervisor_run_allowed: true
+    supervisor_timeout_sec: 0.5
 
     # These are the documented CyberDog 2 defaults; inspect `ros2 topic list`
     # on the robot and remap them if its software release differs.
@@ -25,6 +28,7 @@
     touch_topic: "/touch_status"
     race_enabled_topic: "/mi_dog_real/race_enabled"
     operator_event_topic: "/mi_dog_real/operator_event"
+    supervisor_run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
     audio_feedback_service: "/speech_text_play"
     wake_event_topic: "/dog_wakeup"
     continue_dialog_topic: "/continue_dialog"

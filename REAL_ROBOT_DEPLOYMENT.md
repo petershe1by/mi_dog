@@ -132,6 +132,10 @@ a fresh command. PAUSE and STOP remain unconditional so they can always revoke r
 An isolated state-machine sequence verified unsafe START rejection, no auto-start after recovery,
 safe START, PAUSE, unsafe CONTINUE rejection, no auto-continue after recovery, safe CONTINUE, and
 STOP. It used isolated topics and emitted no real motion command.
+The final motion adapter now consumes that permission directly with a 0.5-second freshness
+timeout. An ARM64 isolated-output test verified fail-closed behavior when permission is missing,
+false, or stale; only fresh true permission allowed isolated servo data, and fresh recovery worked.
+The test output was mapped under `/mi_dog_test/...`, never to the real motion topic.
 
 Recomputing Xiaomi's raw-index mapping and installation rotations shows that all head-ToF
 rays point downward by about 42 to 87 degrees in robot coordinates; the central 4x4 rays
