@@ -2,6 +2,11 @@
 
 验收原则：日志状态与 Gazebo 物理现象必须同时成立；`smoke_test.sh` 只证明基础设施，不替代赛道冷回归。
 
+本文件记录当前最新的 2026-07-30/31 完整回归。2026-07-26 修复第一关后的 800.277 秒
+冷跑仍是有效历史证据，但已被后续强化版本回归取代；时间线见
+[`docs/WORKLOG.md`](docs/WORKLOG.md)。真机验收独立记录在
+[`docs/REAL_ROBOT_ACCEPTANCE.md`](docs/REAL_ROBOT_ACCEPTANCE.md)。
+
 ## 最终冷启动回归
 
 - 日期：2026-07-30/31（Asia/Shanghai）

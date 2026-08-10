@@ -1,5 +1,10 @@
 # 比赛赛段、暂停与断点恢复设计
 
+> 本文包含目标设计和当前实现，不能把设计图直接当作已部署功能。当前已实现状态为
+> `DOWN_WAITING/RUNNING/PAUSED/EMERGENCY_STOP/FINISHED`；`STANDING_CHECK`、
+> `PAUSING`、`STOP_CONFIRMED`、`SAFE_LIE_DOWN` 和 `RECOVERING` 仍是后续闭环目标。
+> 当前状态与下一步见 [`docs/PROJECT_HANDOFF.md`](docs/PROJECT_HANDOFF.md)。
+
 ## 目标
 
 比赛程序按官方六个赛段运行。在赛段失败或出现危险时，允许经授权的语音命令或触摸区双击请求暂停；系统先停稳，在安全地面上回到趴下状态，并保存进度。随后可从当前赛段的安全检查点重试，完成后继续余下赛段。
@@ -25,6 +30,8 @@
 保存的断点至少包含：当前赛段、子任务、已完成目标、局部定位置信度、最后安全检查点、暂停原因和比赛开始后的单调时钟时间。
 
 ## 状态机
+
+下面是目标状态机，不是当前代码逐状态实现清单：
 
 ```text
 DOWN_WAITING --开始比赛--> STANDING_CHECK --通过--> RUNNING

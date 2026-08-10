@@ -1,5 +1,9 @@
 # CyberDog 2 real-robot deployment checkpoint
 
+This file preserves chronological deployment evidence. For current operation, handoff,
+measurements, and next steps, use [`docs/README.md`](docs/README.md). The active configuration
+remains sensor-only with `enable_motion=false`.
+
 Observed on 2026-08-05 over the physical Ethernet port.
 
 - Laptop: `192.168.44.100/24`
@@ -23,13 +27,13 @@ deletion of `/home/mi/.cache/pip` (download cache only) recovered 336 MB; 332 MB
 after installation. No existing workspace, Python environment, model, VS Code server, or
 stock robot software was removed.
 
-Motion remains locked. The next acceptance gates are:
+Motion remains locked. Standing contact and static proximity calibration below are complete;
+the remaining acceptance gates are:
 
-1. Calibrate foot-contact and proximity values while standing, unobstructed, and during a
-   separately approved controlled leg lift.
-2. Add ground-edge/clearance interpretation before connecting the lie-down request to posture motion.
-3. Port perception and replace all Gazebo-only state (`/model_states`, world coordinates).
-4. Validate an independent emergency stop and zero-speed command semantics before any nonzero command.
+1. Validate an independent emergency stop and zero-speed command semantics before any nonzero command.
+2. Complete multi-material/dynamic ultrasonic tests and fall-arrested geometric drop calibration.
+3. Add ground-edge/clearance interpretation before connecting the lie-down request to posture motion.
+4. Port perception and replace all Gazebo-only state (`/model_states`, world coordinates).
 5. Implement and separately accept each physical stage controller before an end-to-end run.
 
 ## Voice competition gate
@@ -38,10 +42,11 @@ The adapter now has a fail-closed voice gate.  With `require_voice_start: true`,
 remains inhibited until an exact `std_msgs/msg/String` command arrives on
 `/mi_dog_real/voice_command`:
 
-- `开始比赛`: enable race motion only when required sensors and the emergency-stop
+- `启动`: enable race state only when required sensors and the emergency-stop
   heartbeat are healthy.
-- `继续比赛`: re-enable under the same checks after a voice stop.
-- `停止比赛`: immediately invalidate the current motion command and inhibit output.
+- `恢复`: re-enable under the same checks after a pause.
+- `暂停`: immediately invalidate the current command and pause the race.
+- `终止`: invalidate the command and enter the latched stop state.
 
 The latched `/mi_dog_real/race_enabled` topic exposes the gate state to the future real
 autonomy supervisor.  This layer intentionally does not translate directional speech into

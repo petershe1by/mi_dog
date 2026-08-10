@@ -2,6 +2,12 @@
 
 这个包与 `cyberdog_autonomy`（Gazebo/LCM 仿真）完全隔离：不改 Dockerfile、不替换仿真控制器，也不把 x86 仿真镜像复制到狗上。
 
+项目交接、现场操作、全部测量数据和验收状态分别见
+[`../docs/PROJECT_HANDOFF.md`](../docs/PROJECT_HANDOFF.md)、
+[`../docs/REAL_ROBOT_RUNBOOK.md`](../docs/REAL_ROBOT_RUNBOOK.md)、
+[`../docs/REAL_ROBOT_TEST_DATA.md`](../docs/REAL_ROBOT_TEST_DATA.md) 和
+[`../docs/REAL_ROBOT_ACCEPTANCE.md`](../docs/REAL_ROBOT_ACCEPTANCE.md)。
+
 ## 已实现的安全边界
 
 - 默认 `enable_motion=false`：只订阅相机、雷达和姿态，绝不发布运动指令。
@@ -174,12 +180,14 @@ ros2 run mi_dog_real ground_tof_capture.py --samples 20 --timeout 15
 更低的真实目标，因此家中只做静止覆盖/材质诊断；几何落差阈值必须在有防坠保护、人员
 可远程更换目标板的正式工装上标定。
 
-真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
-验收后系统被留在赛段1 `PAUSED`。
+真人验收曾覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`。
+2026-08-10 最新正式服务重启检查为 `DOWN_WAITING`、`run_allowed=false`；机器狗保持趴卧。
 
 ## 首次接入（只读探测）
 
-先由赛事方确认 CyberDog 2 的 Type-C 数据模式、官方 USB-C 网卡/转接方案、IP 和登录权限。不要按 CyberDog 1 的 `192.168.55.*` 教程操作，也不要在未确认网络前运行竞赛镜像中的 `scp_to_cyberdog.sh`。
+这台参赛狗已经通过物理网口确认主控地址为 `192.168.44.1`。接入其他设备时仍须重新向
+赛事方确认端口、IP 和权限；不要按 CyberDog 1 的 `192.168.55.*` 教程操作，也不要运行
+竞赛镜像中的 `scp_to_cyberdog.sh`。
 
 在机器人官方 `cyberdog_ws`/ROS 2 环境中建立独立工作区后构建：
 
