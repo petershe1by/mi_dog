@@ -27,6 +27,8 @@ ament_target_dependencies(mi_dog_state_bridge_node protocol rclcpp sensor_msgs s
 
 install(TARGETS mi_dog_real_node mi_dog_supervisor_node mi_dog_state_bridge_node
   DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/ground_tof_capture.py
+  DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
 

@@ -129,3 +129,17 @@ were within about `0.356..0.382 m`. A matte-black floor covering produced
 1.6 cm shorter range. Surface colour therefore cannot stand in for a geometric drop-off.
 The appended valid-pixel fractions make partial/no-return evidence observable, but remain
 diagnostic-only and are not connected to motion.
+
+The package installs a read-only capture utility:
+
+```bash
+ros2 run mi_dog_real ground_tof_capture.py --samples 20 --timeout 15
+```
+
+It reports mean/min/max for all six fields and never imports a motion-control interface.
+Official geometry combined with the standing baseline places the central-ROI footprints at
+approximately robot-frame `x=0.30..0.41 m`, left `y=0.09..0.19 m`, and right
+`y=-0.19..-0.09 m`, close to the front feet. No object may be inserted there while standing.
+Keeping every foot on an ordinary floor also cannot create a genuinely lower target, so home
+testing is limited to stationary coverage/material checks. A geometric drop threshold requires
+a purpose-built, fall-arrested rig with remotely changeable target panels.
