@@ -115,6 +115,18 @@ it never treats the fresh BMS reading as permission to bypass the motion control
 An isolated `/mi_dog_test/...` replay verified both the stale-state and genuine-charging
 reasons while keeping the safety result false; it published no real motion command.
 
+`/mi_dog_real/supervisor/run_allowed` is independently fail-closed. In addition to the
+supervisor being `RUNNING`, it requires fresh valid odometry within the 25-degree tilt limit,
+fresh error-free motion status, and fresh healthy non-charging BMS data. Official motion
+switches `NORMAL=0` and `TRANSITIONING=1` are accepted so a normal command transition does
+not cut its own permission; ESTOP, damping, lifted, thermal, battery, controller-error, and
+charging states revoke it. The run gate deliberately does not require all four feet to be in
+contact because a valid gait lifts feet by design.
+An isolated replay verified true for NORMAL and TRANSITIONING, false for ESTOP, 30-degree
+tilt, stale odometry, wired charging, and a motion orientation error, plus recovery back to
+true after each transient fault. After deployment the real service remained `DOWN_WAITING`
+with `run_allowed=false` and safety reason `ready`; no real motion command was published.
+
 Recomputing Xiaomi's raw-index mapping and installation rotations shows that all head-ToF
 rays point downward by about 42 to 87 degrees in robot coordinates; the central 4x4 rays
 span roughly 56 to 78 degrees downward. These sensors are therefore ground/drop-off inputs,

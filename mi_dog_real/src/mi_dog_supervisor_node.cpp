@@ -23,6 +23,8 @@ constexpr int kFirstStage = 1;
 constexpr int kLastStage = 6;
 // Xiaomi motion_action defines INT32_MIN as the normal/no-error motor sentinel.
 constexpr int32_t kMotorNormal = std::numeric_limits<int32_t>::min();
+constexpr int8_t kMotionSwitchNormal = 0;
+constexpr int8_t kMotionSwitchTransitioning = 1;
 constexpr int8_t kMotionSwitchCharging = 14;
 
 enum class SupervisorState {
@@ -224,15 +226,16 @@ class MiDogSupervisorNode final : public rclcpp::Node {
 
   void handle_motion_status(const protocol::msg::MotionStatus &message) {
     motion_switch_status_ = message.switch_status;
-    motion_status_healthy_ = message.switch_status == 0 &&
-                             message.ori_error == 0 &&
-                             message.footpos_error == 0 &&
-                             std::all_of(
-                                 message.motor_error.begin(), message.motor_error.end(),
-                                 [](int32_t error) {
-                                   // Observed firmware uses both 0 and kMotorNormal when healthy.
-                                   return error == 0 || error == kMotorNormal;
-                                 });
+    motion_errors_clear_ = message.ori_error == 0 &&
+                           message.footpos_error == 0 &&
+                           std::all_of(
+                               message.motor_error.begin(), message.motor_error.end(),
+                               [](int32_t error) {
+                                 // Observed firmware uses both 0 and kMotorNormal when healthy.
+                                 return error == 0 || error == kMotorNormal;
+                               });
+    motion_status_healthy_ = message.switch_status == kMotionSwitchNormal &&
+                             motion_errors_clear_;
     last_motion_status_time_ = now();
     have_motion_status_ = true;
   }
@@ -358,9 +361,24 @@ class MiDogSupervisorNode final : public rclcpp::Node {
            (current_time - last_bms_status_time_).seconds() <= sensor_freshness_sec_ * 3.0;
   }
 
+  bool run_inputs_allow_motion(const rclcpp::Time &current_time) const {
+    const bool odometry_allows_run = have_odometry_ && odometry_valid_ &&
+        (current_time - last_odometry_time_).seconds() <= sensor_freshness_sec_ &&
+        std::abs(roll_rad_) <= max_tilt_rad_ && std::abs(pitch_rad_) <= max_tilt_rad_;
+    const bool motion_switch_allows_run =
+        motion_switch_status_ == kMotionSwitchNormal ||
+        motion_switch_status_ == kMotionSwitchTransitioning;
+    const bool motion_status_allows_run = have_motion_status_ && motion_errors_clear_ &&
+        motion_switch_allows_run &&
+        (current_time - last_motion_status_time_).seconds() <= sensor_freshness_sec_;
+    return odometry_allows_run && motion_status_allows_run &&
+           power_allows_motion(current_time);
+  }
+
   void publish_run_allowed(const rclcpp::Time &current_time) {
     std_msgs::msg::Bool message;
-    message.data = state_ == SupervisorState::kRunning && power_allows_motion(current_time);
+    message.data = state_ == SupervisorState::kRunning &&
+                   run_inputs_allow_motion(current_time);
     run_allowed_pub_->publish(message);
   }
 
@@ -448,6 +466,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   bool have_motion_status_{false};
   bool odometry_valid_{false};
   bool motion_status_healthy_{false};
+  bool motion_errors_clear_{false};
   int8_t motion_switch_status_{0};
   bool have_bms_status_{false};
   bool bms_healthy_{false};
