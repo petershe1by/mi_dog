@@ -171,6 +171,8 @@
 - C++ 默认值和通用真机配置也改为 false；ARM64 构建约 1 分 41 秒成功。服务 `17:31:45`
   重启后实测 `manage_dialogue=False`、`enable_motion=False`、supervisor `DOWN_WAITING`、急停
   `input_missing`，四节点 active 且持续无运动输出。
+- 清单脚本新增 `manage_dialogue` 实效参数。sensor-only launch 中两项 readiness=false 是有意
+  允许只读观测的覆盖；运动总开关 false 时节点在这些门之前直接返回，不发布运动命令。
 
 ## 如何继续记录
 

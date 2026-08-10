@@ -297,6 +297,11 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
 `enable_motion=False`、supervisor=`DOWN_WAITING`、急停守卫=`input_missing`，日志继续持续输出
 `no motion output`。
 
+部署审计同时确认，sensor-only launch 有意把 `require_sensor_ready` 和 `require_estop_ready`
+覆盖为 false；由于 `enable_motion=False` 时节点在所有运动门之前直接返回且不创建任何运动输出，
+这两个值只允许离线观测缺失的传感器，不构成运动旁路。清单脚本新增 `manage_dialogue` 实效参数，
+以后每次部署都必须证明该值为 false。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，
