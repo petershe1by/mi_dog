@@ -97,7 +97,9 @@ motion until different materials, widths, lateral offsets, and low-speed dynamic
 Head ToF is analysed separately below because its field of view points toward the ground.
 
 The bridge now exposes a separate read-only `/mi_dog_real/head_ground_roi_summary` as
-`[left-centre p25, left-centre median, right-centre p25, right-centre median]` in metres.
+`[left-centre p25, left-centre median, right-centre p25, right-centre median,
+left-valid-fraction, right-valid-fraction]`. The first four fields are metres; the appended
+fractions preserve compatibility with consumers of the original four-field prefix.
 Each statistic uses the central 4x4 pixels of the raw 8x8 sensor. This symmetric ROI is
 unchanged by the 180-degree raw-index reversal in Xiaomi's point-cloud utility. It remains
 diagnostic-only until unobstructed and box-distance measurements establish useful thresholds.
@@ -113,3 +115,11 @@ span roughly 56 to 78 degrees downward. These sensors are therefore ground/drop-
 not frontal obstacle ranging. Future standing calibration should detect missing ground,
 sudden range increases, and left/right disagreement. Such evidence may stop motion but must
 never authorize forward motion by itself; ultrasonic and lidar remain the frontal sensors.
+
+On 2026-08-10, a stationary standing run collected 20 flat-floor frames. Left p25/median
+means were `0.3631/0.3756 m`, and right means were `0.3630/0.3768 m`; all observed values
+were within about `0.356..0.382 m`. A matte-black floor covering produced
+`0.3477/0.3600 m` left and `0.3402/0.3604 m` right: no return loss, only an approximately
+1.6 cm shorter range. Surface colour therefore cannot stand in for a geometric drop-off.
+The appended valid-pixel fractions make partial/no-return evidence observable, but remain
+diagnostic-only and are not connected to motion.

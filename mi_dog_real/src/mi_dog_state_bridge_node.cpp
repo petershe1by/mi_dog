@@ -55,13 +55,17 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
           head_right_m_ = message->right_head.data_available ?
               median_valid(message->right_head.data) : nan();
           const auto left_roi = message->left_head.data_available ?
-              center_roi_stats(message->left_head.data) : std::array<float, 2>{nan(), nan()};
+              center_roi_stats(message->left_head.data) :
+              std::array<float, 3>{nan(), nan(), 0.0f};
           const auto right_roi = message->right_head.data_available ?
-              center_roi_stats(message->right_head.data) : std::array<float, 2>{nan(), nan()};
+              center_roi_stats(message->right_head.data) :
+              std::array<float, 3>{nan(), nan(), 0.0f};
           head_left_roi_p25_m_ = left_roi[0];
           head_left_roi_median_m_ = left_roi[1];
+          head_left_roi_valid_fraction_ = left_roi[2];
           head_right_roi_p25_m_ = right_roi[0];
           head_right_roi_median_m_ = right_roi[1];
+          head_right_roi_valid_fraction_ = right_roi[2];
         });
     rear_tof_sub_ = create_subscription<protocol::msg::RearTofPayload>(
         rear_tof_topic, rclcpp::SensorDataQoS(),
@@ -118,9 +122,9 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
     return *middle;
   }
 
-  static std::array<float, 2> center_roi_stats(const std::vector<float> &input) {
+  static std::array<float, 3> center_roi_stats(const std::vector<float> &input) {
     if (input.size() != 64) {
-      return {nan(), nan()};
+      return {nan(), nan(), 0.0f};
     }
     std::vector<float> valid;
     valid.reserve(16);
@@ -134,13 +138,14 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
         }
       }
     }
+    const float valid_fraction = static_cast<float>(valid.size()) / 16.0f;
     if (valid.empty()) {
-      return {nan(), nan()};
+      return {nan(), nan(), valid_fraction};
     }
     std::sort(valid.begin(), valid.end());
     const size_t p25_index = (valid.size() - 1) / 4;
     const size_t median_index = valid.size() / 2;
-    return {valid[p25_index], valid[median_index]};
+    return {valid[p25_index], valid[median_index], valid_fraction};
   }
 
   void publish_proximity_and_roi() {
@@ -150,10 +155,12 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
       std::lock_guard<std::mutex> lock(proximity_mutex_);
       // Order: ultrasonic, head-left, head-right, rear-left, rear-right (metres).
       output.data = {ultrasonic_m_, head_left_m_, head_right_m_, rear_left_m_, rear_right_m_};
-      // Central 4x4 ROI, metres: left p25, left median, right p25, right median.
+      // Central 4x4 ROI: four ranges in metres, then two valid-pixel fractions.
+      // Existing consumers retain the original first four fields.
       roi_output.data = {
           head_left_roi_p25_m_, head_left_roi_median_m_,
-          head_right_roi_p25_m_, head_right_roi_median_m_};
+          head_right_roi_p25_m_, head_right_roi_median_m_,
+          head_left_roi_valid_fraction_, head_right_roi_valid_fraction_};
     }
     proximity_pub_->publish(output);
     head_roi_pub_->publish(roi_output);
@@ -189,6 +196,8 @@ class MiDogStateBridgeNode final : public rclcpp::Node {
   float head_left_roi_median_m_{nan()};
   float head_right_roi_p25_m_{nan()};
   float head_right_roi_median_m_{nan()};
+  float head_left_roi_valid_fraction_{0.0f};
+  float head_right_roi_valid_fraction_{0.0f};
 };
 
 int main(int argc, char **argv) {
