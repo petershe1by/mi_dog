@@ -270,6 +270,9 @@ class MiDogSupervisorNode final : public rclcpp::Node {
 
   void evaluate_lie_down_safety() {
     const auto current_time = now();
+    // BMS publishes at about 1 Hz on this robot, so it gets a wider freshness window.
+    const bool bms_status_fresh = have_bms_status_ &&
+        (current_time - last_bms_status_time_).seconds() <= sensor_freshness_sec_ * 3.0;
     std::string reason = "ready";
     bool raw_safe = true;
     if (!have_odometry_) {
@@ -299,8 +302,13 @@ class MiDogSupervisorNode final : public rclcpp::Node {
       reason = "stale_motion_status";
     } else if (!motion_status_healthy_) {
       raw_safe = false;
-      reason = motion_switch_status_ == kMotionSwitchCharging ?
-          "motion_controller_charging_inhibited" : "motion_controller_not_healthy";
+      if (motion_switch_status_ == kMotionSwitchCharging) {
+        reason = bms_status_fresh && !wired_charging_ ?
+            "motion_controller_charging_state_stale" :
+            "motion_controller_charging_inhibited";
+      } else {
+        reason = "motion_controller_not_healthy";
+      }
     } else if (!have_foot_contact_) {
       raw_safe = false;
       reason = "waiting_for_foot_contact";
@@ -313,8 +321,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     } else if (!have_bms_status_) {
       raw_safe = false;
       reason = "waiting_for_bms_status";
-    } else if ((current_time - last_bms_status_time_).seconds() > sensor_freshness_sec_ * 3.0) {
-      // BMS publishes at about 1 Hz on this robot, so it gets a wider freshness window.
+    } else if (!bms_status_fresh) {
       raw_safe = false;
       reason = "stale_bms_status";
     } else if (!bms_healthy_) {

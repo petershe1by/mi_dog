@@ -108,6 +108,12 @@ With the box removed while lying and wired charging, the ROI baseline was approx
 correctly cancelled a proposed standing sample because both BMS wired charging and the
 official `MotionStatus.CHARGING=14` were active. Status 14 now reports the explicit reason
 `motion_controller_charging_inhibited` instead of a generic controller fault.
+After unplugging, one session retained controller status `CHARGING=14` while fresh BMS data
+already reported no wired charging. A normal reboot restored `switch_status=0`. The supervisor
+now identifies that exact fail-closed combination as `motion_controller_charging_state_stale`;
+it never treats the fresh BMS reading as permission to bypass the motion controller.
+An isolated `/mi_dog_test/...` replay verified both the stale-state and genuine-charging
+reasons while keeping the safety result false; it published no real motion command.
 
 Recomputing Xiaomi's raw-index mapping and installation rotations shows that all head-ToF
 rays point downward by about 42 to 87 degrees in robot coordinates; the central 4x4 rays
