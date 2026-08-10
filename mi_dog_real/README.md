@@ -13,9 +13,9 @@
   `/mi_dog_real/emergency_stop_input` 转为上述心跳：启动、输入缺失或超过 0.25 秒均持续发布
   `true`。首次 `false` 不会解锁，必须先观察一次按下 `true` 再释放 `false`；断线恢复后也
   必须重复按下—释放周期。
-- `estop_hid_input.py` 读取专用 `/dev/input/by-id/*-event-kbd`，独占 KEY_F12，并支持常闭
-  自锁蘑菇按钮：正常触点闭合对应 key-down/raw false；按钮按下、触点断线、USB 断开或设备
-  打不开均对应 raw true。正式配置禁止普通 `/dev/input/eventN` 和非字符测试设备。
+- `estop_hid_input.py` 是 USB HID 常闭输入原型，FIFO 逻辑测试已通过，但机器狗三个外部
+  Type-C 的 Host/Device 角色没有文档依据。内部 `lsusb` 不能证明外部端口可接 HID，因此
+  正式开机服务不启动该原型，也不得据此插接任一 Type-C。
 - 默认还要求 supervisor 的 `/mi_dog_real/supervisor/run_allowed` 持续为真；许可缺失、为假或
   超过 0.5 秒未刷新都会发送停止心跳，不能仅凭语音门或速度输入绕过 supervisor。
 - 拒绝 NaN/Inf 指令；IMU 四元数归一化后执行横滚/俯仰门控，雷达使用前向扇区有效样本做减速和停车。
@@ -96,9 +96,8 @@
 真机已安装并启用 `mi-dog-real-sensor.service`，它通过
 `scripts/run_sensor_gate.sh` 启动传感器安全门和 supervisor。该服务固定使用
 `enable_motion=false` 的配置；它开机可用，但还不能让机器狗执行六赛段动作。
-同一服务也启动急停守卫；当前没有实体输入生产者，所以它按设计保持
-`input_asserted/output_asserted=true`。HID 节点使用尚不存在的占位 by-id 路径并保持
-`open_failed:2`。ARM64 隔离测试已通过启动、首次 false、按下/释放、
+同一服务启动急停守卫，但不启动 HID 原型；当前没有实体输入生产者，所以它按设计保持
+`input_missing/output_asserted=true`。ARM64 隔离测试已通过启动、首次 false、按下/释放、
 超时、重连和再次按下/释放八阶段，但这不能替代实体按钮和线缆验收。
 `lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、四足接触、控制器和 BMS 的
 只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为

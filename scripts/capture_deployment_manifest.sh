@@ -87,26 +87,10 @@ require_single_process() {
   printf '%s' "${pids[0]}"
 }
 
-require_single_process_pattern() {
-  local pattern="$1"
-  local label="$2"
-  local -a pids=()
-  mapfile -t pids < <(pgrep -f "$pattern" || true)
-  if [[ ${#pids[@]} -ne 1 ]]; then
-    echo "Expected exactly one $label process, found ${#pids[@]} (${pids[*]:-none})." >&2
-    echo "Remove stale isolated-test processes before capturing a deployment manifest." >&2
-    exit 1
-  fi
-  printf '%s' "${pids[0]}"
-}
-
 real_node_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_real_node" mi_dog_real_node)"
 supervisor_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_supervisor_node" mi_dog_supervisor_node)"
 bridge_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_state_bridge_node" mi_dog_state_bridge_node)"
 estop_guard_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node" mi_dog_estop_guard_node)"
-estop_hid_pid="$(require_single_process_pattern \
-  "^(python3|/usr/bin/python3) ${install_root}/lib/mi_dog_real/estop_hid_input.py([[:space:]]|$)" \
-  mi_dog_estop_hid_input)"
 
 read_param() {
   local node="$1"
@@ -171,22 +155,14 @@ effective_enable_motion="$(read_param /mi_dog_real enable_motion)"
 effective_require_sensor_ready="$(read_param /mi_dog_real require_sensor_ready)"
 effective_require_estop_ready="$(read_param /mi_dog_real require_estop_ready)"
 effective_require_supervisor_run_allowed="$(read_param /mi_dog_real require_supervisor_run_allowed)"
-estop_hid_device_path="$(read_param /mi_dog_estop_hid_input device_path)"
-estop_hid_key_code="$(read_param /mi_dog_estop_hid_input key_code)"
-estop_hid_assert_when_key_down="$(read_param /mi_dog_estop_hid_input assert_when_key_down)"
-estop_hid_grab_device="$(read_param /mi_dog_estop_hid_input grab_device)"
 supervisor_state="$(read_topic_once /mi_dog_real/supervisor/state string)"
 run_allowed="$(read_topic_once /mi_dog_real/supervisor/run_allowed bool)"
 emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
 estop_guard_status="$(read_topic_once /mi_dog_real/emergency_stop_guard/status string)"
-estop_hid_status="$(read_topic_once /mi_dog_real/emergency_stop_hid/status string)"
 
 for value in "$effective_enable_motion" "$effective_require_sensor_ready" \
              "$effective_require_estop_ready" "$effective_require_supervisor_run_allowed" \
-             "$supervisor_state" "$run_allowed" "$emergency_stop" "$estop_guard_status" \
-             "$estop_hid_device_path" "$estop_hid_key_code" \
-             "$estop_hid_assert_when_key_down" "$estop_hid_grab_device" \
-             "$estop_hid_status"; do
+             "$supervisor_state" "$run_allowed" "$emergency_stop" "$estop_guard_status"; do
   if [[ -z "$value" ]]; then
     echo "A required live deployment value was empty; manifest not written." >&2
     exit 1
@@ -205,7 +181,6 @@ done
   echo "mi_dog_supervisor_node_pid=$supervisor_pid"
   echo "mi_dog_state_bridge_node_pid=$bridge_pid"
   echo "mi_dog_estop_guard_node_pid=$estop_guard_pid"
-  echo "mi_dog_estop_hid_input_pid=$estop_hid_pid"
   echo "ros_distro=${ROS_DISTRO:-unknown}"
   echo "ros_domain_id=${ROS_DOMAIN_ID:-unknown}"
   echo "rmw_implementation=${RMW_IMPLEMENTATION:-unknown}"
@@ -217,11 +192,8 @@ done
   echo "run_allowed=$run_allowed"
   echo "emergency_stop=$emergency_stop"
   echo "estop_guard_status=$estop_guard_status"
-  echo "estop_hid_device_path=$estop_hid_device_path"
-  echo "estop_hid_key_code=$estop_hid_key_code"
-  echo "estop_hid_assert_when_key_down=$estop_hid_assert_when_key_down"
-  echo "estop_hid_grab_device=$estop_hid_grab_device"
-  echo "estop_hid_status=$estop_hid_status"
+  echo "estop_hid_input_active=false"
+  echo "estop_hid_connection=unverified_no_external_port_mapping"
   echo "sha256_begin"
   sha256sum "${files[@]}"
   echo "sha256_end"

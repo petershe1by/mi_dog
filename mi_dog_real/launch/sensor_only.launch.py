@@ -34,15 +34,6 @@ def generate_launch_description():
         ),
         Node(
             package="mi_dog_real",
-            executable="estop_hid_input.py",
-            name="mi_dog_estop_hid_input",
-            output="screen",
-            parameters=[
-                "/home/mi/mi_dog_ws/src/mi_dog_real/config/estop_hid.yaml",
-            ],
-        ),
-        Node(
-            package="mi_dog_real",
             executable="mi_dog_estop_guard_node",
             name="mi_dog_estop_guard",
             output="screen",

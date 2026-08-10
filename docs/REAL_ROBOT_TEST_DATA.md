@@ -242,6 +242,10 @@ START/CONTINUE 状态机序列全部通过：
 进程、`DOWN_WAITING/run_allowed=false`、`enable_motion=False`、`emergency_stop=true`、
 HID `open_failed:2` 和守卫 `input_asserted`，并哈希 HID 脚本与配置。
 
+更正：上述清单准确记录了当时运行状态，但“狗侧 HID 可接实物”的部署前提随后被撤回。
+`lsusb` 只能看到内部 Hub/RealSense，不能映射三个外部 Type-C。HID 节点已从正式服务移除；
+其 7 阶段结果只保留为软件原型证据，不是端口或实体急停验收。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，

@@ -27,39 +27,22 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
 软件守卫不能代替实体按钮。接入并完成断线、按钮保持、释放重置和停止延迟验收前，仍禁止
 非零运动。
 
-### 实体 HID 急停规格与接线
+### 外部接口限制（重要更正）
 
-当前实现面向以下组合，不使用普通键盘或无线遥控器：
+机器狗外部只有一个已验证网口和三个 Type-C。现有比赛 PDF/DOCX 没有说明三个 Type-C
+分别是充电、USB Device、USB Host 还是调试口。主控 `lsusb` 显示内部 Hub 和 RealSense，
+只证明内部 USB 总线存在，不能证明任一外部 Type-C 能接 HID。
 
-- 有线 USB HID 键盘编码器，Linux 下产生稳定的 `/dev/input/by-id/*-event-kbd`；
-- 带机械自锁和人工旋转/拉起复位的红色蘑菇按钮；
-- 使用按钮的常闭（NC）触点接到编码器的专用 KEY_F12 输入；
-- 正常释放时 NC 闭合，内核按键状态持续为 down；按钮按下或触点线断开时为 up；
-- USB 线必须直接接狗的有线 Hub，不经过 Wi-Fi、蓝牙或比赛控制电脑。
+因此：不要把 USB 急停、U 盘、扩展坞或任意 Type-C 转接器插到狗上试口；不要按物理位置
+猜测。`estop_hid_input.py` 只保留为软件原型，正式 `sensor_only.launch.py` 不启动它。
+当前守卫因 `/mi_dog_real/emergency_stop_input` 无生产者而持续输出 true。
 
-这是单通道工程保护，不是经安全完整性等级认证的工业安全继电器。HID 控制器内部“卡死且
-仍伪装 key-down”无法由本软件检测；因此正式比赛仍需现场人员、机械空间和官方停止方式。
+下一种可验证方案有两条，选定前均不连接实物：
 
-首次接入时保持狗趴卧、`enable_motion=false`。插入设备后执行：
+1. 取得赛事方/小米提供的三个 Type-C 角色和允许的 Host 设备清单，再决定是否使用狗侧 HID；
+2. 把有线按钮接比赛电脑，由电脑通过现有以太网发送心跳；网线/进程断开时狗侧守卫超时触发。
 
-```bash
-ls -l /dev/input/by-id/*-event-kbd
-```
-
-把专用设备的完整稳定路径写入 `config/estop_hid.yaml`；禁止使用会随重启变化的
-`/dev/input/eventN`。编码器必须只映射 KEY_F12（Linux code 88），不得与相机、内置 GPIO
-按键或普通键盘共用。重建并重启服务后检查：
-
-```bash
-ros2 topic echo /mi_dog_real/emergency_stop_hid/status \
-  --qos-durability transient_local --qos-reliability reliable
-ros2 topic echo /mi_dog_real/emergency_stop_input
-ros2 topic echo /mi_dog_real/emergency_stop
-```
-
-验收顺序是：启动且按钮已释放仍闭锁；按下为 true；保持按下不反弹；人工复位后才变 false；
-拔 USB、断开任一触点线均变 true；重新插入后必须再完成按下—释放周期。全序列先在无运动
-模式完成，再谈零速度运控测试。
+第二条不占狗的 Type-C，但仍是依赖电脑、以太网和软件的工程急停，不是认证硬件断电回路。
 
 ## 现场角色与环境
 
@@ -201,7 +184,8 @@ install -m 0755 /path/to/capture_deployment_manifest.sh \
 /home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh --source-commit COMMIT
 ```
 
-工具要求五种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
+工具要求四种正式节点各只有一个进程；HID 原型不得出现在正式服务中。若隔离测试留下同名
+孤儿进程，工具会拒绝生成清单。
 不要在存在重复节点时相信 `ros2 param get /mi_dog_real ...` 的单次结果。
 
 不得运行赛事镜像中的 `scp_to_cyberdog.sh`；它会删除或覆盖原厂运控目录。
