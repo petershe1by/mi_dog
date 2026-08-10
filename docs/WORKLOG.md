@@ -148,6 +148,9 @@
 - 发现 unit 仍 `Wants/After=network-online.target`，改为仅 `After=network.target`，避免无网线
   时等待外部网络。仍需用户配合完成一次真正拔网线冷启动，不能仅凭配置标为通过。
 - 当前是 sensor-only、`enable_motion=false`；开机自启不等于真机六赛段已实现。
+- 提交 `ad6c06a` 部署后生成 `deployment_manifest_20260810T151435+0800.txt`，SHA256
+  `612a13929260f2e23b83cfbf915ed1e791f933c52cf2c50049f4bbed2fb7c311`；服务 active、四个正式
+  节点、`DOWN_WAITING`、急停 true、无运动输出。
 
 ## 如何继续记录
 

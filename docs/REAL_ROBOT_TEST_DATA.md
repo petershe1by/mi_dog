@@ -252,6 +252,12 @@ HID `open_failed:2` 和守卫 `input_asserted`，并哈希 HID 脚本与配置�
 `estop_hid_input_active=false`、`estop_hid_connection=unverified_no_external_port_mapping`、
 四个正式节点、`input_missing`、急停 true 和 `enable_motion=False`。
 
+移除 `network-online.target` 后生成的新清单为
+`deployment_manifest_20260810T151435+0800.txt`，`source_commit=ad6c06a`，SHA256
+`612a13929260f2e23b83cfbf915ed1e791f933c52cf2c50049f4bbed2fb7c311`。服务重启后 enabled、
+active，`Wants` 为空，`After` 只包含 `network.target` 等本机启动目标；安全状态保持不变。
+这不是拔网线冷启动证据，现场测试仍待完成。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，
