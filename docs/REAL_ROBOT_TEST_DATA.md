@@ -307,6 +307,8 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
 `76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`。清单实测服务 active、
 四节点单实例、`enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、
 `run_allowed=false`、`emergency_stop=true`、`estop_guard_status=input_missing`。
+原厂 `motion_id=101, progress=100` 后，用户现场目视确认机器狗最终稳定趴下；本轮最终姿态
+因此同时具备运控反馈和物理观察证据。
 
 ## 早期人工控制运动观察
 

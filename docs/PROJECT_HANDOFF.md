@@ -29,7 +29,7 @@
 
 2026-08-10 17:31 安全回退部署后的正式服务检查：`mi-dog-real-sensor.service=active`，
 `manage_dialogue=false`、`enable_motion=false`，supervisor 为 `DOWN_WAITING`，急停为
-`input_missing`；没有比赛运动输出。原厂高阻尼趴下动作已返回完成，最终物理姿态仍需现场确认。
+`input_missing`；没有比赛运动输出。原厂高阻尼趴下动作返回完成后，用户现场确认机器狗已稳定趴下。
 
 ## 已做的工作
 

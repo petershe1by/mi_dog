@@ -176,6 +176,7 @@
 - 最终清单 `deployment_manifest_20260810T173628+0800.txt` 绑定 `37d97eb`，SHA256
   `76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`；其中
   `manage_dialogue=False`、`enable_motion=False`、急停 true、状态 `DOWN_WAITING`。
+- 用户最终现场确认机器狗已稳定趴下，与 `motion_id=101, progress=100` 的运控反馈一致。
 
 ## 如何继续记录
 
