@@ -37,12 +37,9 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
 猜测。`estop_hid_input.py` 只保留为软件原型，正式 `sensor_only.launch.py` 不启动它。
 当前守卫因 `/mi_dog_real/emergency_stop_input` 无生产者而持续输出 true。
 
-下一种可验证方案有两条，选定前均不连接实物：
-
-1. 取得赛事方/小米提供的三个 Type-C 角色和允许的 Host 设备清单，再决定是否使用狗侧 HID；
-2. 把有线按钮接比赛电脑，由电脑通过现有以太网发送心跳；网线/进程断开时狗侧守卫超时触发。
-
-第二条不占狗的 Type-C，但仍是依赖电脑、以太网和软件的工程急停，不是认证硬件断电回路。
+比赛方案必须先取得赛事方/小米提供的三个 Type-C 角色和允许设备清单，或采用赛事方明确
+认可的本体/官方停止装置。电脑侧按钮经网线发心跳只可用于家中调试，不符合单狗离线比赛
+架构，不能作为正式方案。
 
 ## 现场角色与环境
 
@@ -105,6 +102,20 @@ ros2 param get /mi_dog_real enable_motion
 ```
 
 预期为 `False`。不是 `False` 时立即停止服务并调查，不继续测试。
+
+## 单狗离线比赛模式
+
+正式比赛不插网线、不使用电脑作为算力节点。`mi-dog-real-sensor.service` 安装在狗上并随
+`multi-user.target` 自启；unit 只等待 `network.target`，不等待外部网络在线。CycloneDDS
+配置 `/etc/mi/cyclonedds.xml` 固定使用 `lo` 和 `localhost`，本机 ROS 2 通信不依赖 eth0。
+
+当前服务仍是无运动版本，它只能证明开机等待、语音、触摸、传感器和 supervisor 的本机
+基础链，不能完成六赛段。正式运动版本必须另行逐段验收，不能通过把当前 YAML 的
+`enable_motion` 直接改为 true 得到。
+
+报到前必须做一次真实冷启动验收：关机、拔网线、保持不充电，重新开机并等待服务自动启动；
+全程不接电脑，通过狗本机提示确认唤醒/口令；测试后再接网线导出 journal 和部署清单。未做
+这次测试前，只能写“配置支持离线”，不能写“离线冷启动通过”。
 
 ## 语音操作
 

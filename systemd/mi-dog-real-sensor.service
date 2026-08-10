@@ -1,7 +1,6 @@
 [Unit]
 Description=Mi Dog sensor-only voice, touch, and race supervisor
-Wants=network-online.target
-After=network-online.target
+After=network.target
 
 [Service]
 Type=simple
