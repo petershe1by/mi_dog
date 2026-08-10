@@ -126,6 +126,12 @@ An isolated replay verified true for NORMAL and TRANSITIONING, false for ESTOP, 
 tilt, stale odometry, wired charging, and a motion orientation error, plus recovery back to
 true after each transient fault. After deployment the real service remained `DOWN_WAITING`
 with `run_allowed=false` and safety reason `ready`; no real motion command was published.
+START and CONTINUE also sample this gate at the event edge. An unsafe event is rejected without
+entering `RUNNING`; later sensor recovery cannot auto-start the race, so the operator must issue
+a fresh command. PAUSE and STOP remain unconditional so they can always revoke running state.
+An isolated state-machine sequence verified unsafe START rejection, no auto-start after recovery,
+safe START, PAUSE, unsafe CONTINUE rejection, no auto-continue after recovery, safe CONTINUE, and
+STOP. It used isolated topics and emitted no real motion command.
 
 Recomputing Xiaomi's raw-index mapping and installation rotations shows that all head-ToF
 rays point downward by about 42 to 87 degrees in robot coordinates; the central 4x4 rays

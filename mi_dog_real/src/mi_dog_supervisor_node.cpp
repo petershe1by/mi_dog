@@ -160,6 +160,12 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     }
     if (event == "START") {
       if (state_ == SupervisorState::kDownWaiting || state_ == SupervisorState::kPaused) {
+        if (!run_inputs_allow_motion(now())) {
+          RCLCPP_ERROR(
+              get_logger(),
+              "Rejected START because run inputs are not currently safe; operator must retry.");
+          return;
+        }
         current_stage_ = kFirstStage;
         persist_checkpoint();
         transition(SupervisorState::kRunning, "operator START from stage 1");
@@ -170,6 +176,12 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     }
     if (event == "CONTINUE") {
       if (state_ == SupervisorState::kDownWaiting || state_ == SupervisorState::kPaused) {
+        if (!run_inputs_allow_motion(now())) {
+          RCLCPP_ERROR(
+              get_logger(),
+              "Rejected CONTINUE because run inputs are not currently safe; operator must retry.");
+          return;
+        }
         transition(SupervisorState::kRunning, "operator CONTINUE checkpoint");
       } else {
         RCLCPP_WARN(get_logger(), "Ignored CONTINUE while state=%s.", state_name(state_));

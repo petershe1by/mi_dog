@@ -54,7 +54,7 @@
 
 - `/mi_dog_real/supervisor/state`：`DOWN_WAITING/RUNNING/PAUSED/EMERGENCY_STOP/FINISHED`；
 - `/mi_dog_real/supervisor/current_stage`：当前赛段 `1..6`；
-- `/mi_dog_real/supervisor/run_allowed`：只有 `RUNNING` 为真；
+- `/mi_dog_real/supervisor/run_allowed`：只有 `RUNNING` 且所有运行安全门实时满足时为真；
 - `/mi_dog_real/supervisor/pause_request` 与 `lie_down_request`。
 - `/mi_dog_real/supervisor/safe_to_lie_down` 与 `lie_down_safety_reason`：融合约 48 Hz
   的 `/odom_out`、`motion_status`、约 1 Hz 的 `bms_status` 和约 50 Hz 的四足接触估计，
@@ -137,6 +137,11 @@ ROI 是每个原始 8×8 阵列的中心 4×4；官方点云脚本使用的 180�
 隔离回放已验证：`NORMAL`、`TRANSITIONING` 为 true；`ESTOP`、30° 倾斜、里程计过期、
 有线充电和运控姿态错误均为 false，各故障恢复后可重新为 true。正式服务重启后保持
 `DOWN_WAITING`、`run_allowed=false`、安全诊断 `ready`，全程没有真实运动命令。
+START/CONTINUE 还执行事件到达时的边沿检查：若任一运行输入未就绪，事件被拒绝且状态不
+进入 `RUNNING`；传感器随后恢复也不会自动启动，操作者必须重新发出“开始/继续”。PAUSE
+与 STOP 不受该门限制，始终可以立即撤销运行状态。
+隔离状态机测试覆盖了不安全 START、恢复、安全 START、PAUSE、不安全 CONTINUE、再次恢复、
+安全 CONTINUE 和 STOP 的完整序列；拒绝、无自动恢复和状态转换结果均符合预期。
 
 依据小米官方点云脚本的原始索引、安装位姿和旋转矩阵复算，头部两枚 ToF 的射线在
 机器人坐标系中全部向下约 42°..87°，中心 4×4 约向下 56°..78°。因此它们应作为
