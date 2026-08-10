@@ -246,6 +246,12 @@ HID `open_failed:2` 和守卫 `input_asserted`，并哈希 HID 脚本与配置�
 `lsusb` 只能看到内部 Hub/RealSense，不能映射三个外部 Type-C。HID 节点已从正式服务移除；
 其 7 阶段结果只保留为软件原型证据，不是端口或实体急停验收。
 
+纠错后的当前清单为 `deployment_manifest_20260810T144512+0800.txt`，
+`source_commit=885e94b`，SHA256 为
+`563b5e9eb649990185e7763fe08d11a803c73ce160def05b7b0839ff040e4d4a`。清单明确记录
+`estop_hid_input_active=false`、`estop_hid_connection=unverified_no_external_port_mapping`、
+四个正式节点、`input_missing`、急停 true 和 `enable_motion=False`。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，
