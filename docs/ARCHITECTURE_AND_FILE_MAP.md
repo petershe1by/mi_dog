@@ -22,7 +22,7 @@ mi_dog_real_node ──operator_event──> mi_dog_supervisor_node
       │                                  ├─ state/current_stage/checkpoint
       │                                  └─ run_allowed (实时且 fail-closed)
       │                                              │
-独立硬件输入 ──> mi_dog_estop_guard_node ── emergency_stop ──┤
+常闭蘑菇按钮/HID ──> estop_hid_input.py ──> mi_dog_estop_guard_node ──┤
 safe_cmd_vel ────────────────────────────────────────────────┤
       │                                              v
       └──────── 最终运动适配门 <── 传感器/急停 ── motion_servo_cmd
@@ -65,12 +65,15 @@ safe_cmd_vel ──────────────────────�
 | `mi_dog_real/src/mi_dog_supervisor_node.cpp` | 比赛状态、赛段检查点、暂停/停止和安全许可 |
 | `mi_dog_real/src/mi_dog_state_bridge_node.cpp` | LCM 足端和距离传感器到 ROS 2 的只读桥接 |
 | `mi_dog_real/src/mi_dog_estop_guard_node.cpp` | 独立急停输入的失效安全心跳守卫；断线、过期和启动阶段均触发急停 |
+| `mi_dog_real/scripts/estop_hid_input.py` | 读取专用 Linux USB HID；按钮、断线或设备缺失时发布原始急停 |
+| `mi_dog_real/scripts/estop_hid_isolated_test.py` | 用 FIFO 模拟常闭触点、按下/释放和 USB 插拔 |
 | `mi_dog_real/scripts/ground_tof_capture.py` | 只读采集头部地面 ROI 的统计工具 |
 | `mi_dog_real/scripts/estop_guard_isolated_test.py` | 在隔离话题验证急停按下、释放、断线和重新解锁序列 |
 | `mi_dog_real/config/this_robot_sensor_only.yaml` | 这台狗的实测 topic 映射；正式服务使用 |
 | `mi_dog_real/config/real_robot.yaml` | 通用保守模板，默认仍关闭运动 |
 | `mi_dog_real/config/supervisor.yaml` | supervisor 话题、阈值、新鲜度和检查点路径 |
 | `mi_dog_real/config/estop_guard.yaml` | 急停原始输入、输出、状态、0.25 秒超时及 20 Hz 心跳 |
+| `mi_dog_real/config/estop_hid.yaml` | 专用 `/dev/input/by-id`、KEY_F12、常闭极性及 50 Hz 心跳 |
 | `mi_dog_real/launch/sensor_only.launch.py` | 正式开机服务的无运动 launch |
 | `mi_dog_real/launch/real_robot.launch.py` | 通用 launch；不能视作已批准运动配置 |
 
@@ -100,7 +103,8 @@ safe_cmd_vel ──────────────────────�
 | `/mi_dog_real/proximity_summary` | `Float32MultiArray` | 状态桥 | 超声、头左/右、后左/右，单位米 |
 | `/mi_dog_real/head_ground_roi_summary` | `Float32MultiArray` | 状态桥 | 左右 p25/中值/有效比例，只读诊断 |
 | `/mi_dog_real/safe_cmd_vel` | `geometry_msgs/Twist` | 未来高层控制器 | 300 ms 超时；当前无正式生产者 |
-| `/mi_dog_real/emergency_stop_input` | `std_msgs/Bool` | 未来独立硬件接口 | `true=按下`，`false=释放且链路健康`；当前无实体生产者 |
+| `/mi_dog_real/emergency_stop_input` | `std_msgs/Bool` | HID 输入节点 | `true=按下/断线/缺失`，`false=NC 闭合且设备健康` |
+| `/mi_dog_real/emergency_stop_hid/status` | `std_msgs/String` | HID 输入节点 | 设备路径、打开/断开和按键状态诊断 |
 | `/mi_dog_real/emergency_stop` | `std_msgs/Bool` | 急停守卫 | 20 Hz；启动、断线、超时或按下均为 `true` |
 | `/mi_dog_real/emergency_stop_guard/status` | `std_msgs/String` | 急停守卫 | `input_missing/input_stale/pressed/released_armed` 等诊断 |
 

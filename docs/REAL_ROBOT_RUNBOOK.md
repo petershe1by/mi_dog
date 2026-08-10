@@ -27,6 +27,40 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
 软件守卫不能代替实体按钮。接入并完成断线、按钮保持、释放重置和停止延迟验收前，仍禁止
 非零运动。
 
+### 实体 HID 急停规格与接线
+
+当前实现面向以下组合，不使用普通键盘或无线遥控器：
+
+- 有线 USB HID 键盘编码器，Linux 下产生稳定的 `/dev/input/by-id/*-event-kbd`；
+- 带机械自锁和人工旋转/拉起复位的红色蘑菇按钮；
+- 使用按钮的常闭（NC）触点接到编码器的专用 KEY_F12 输入；
+- 正常释放时 NC 闭合，内核按键状态持续为 down；按钮按下或触点线断开时为 up；
+- USB 线必须直接接狗的有线 Hub，不经过 Wi-Fi、蓝牙或比赛控制电脑。
+
+这是单通道工程保护，不是经安全完整性等级认证的工业安全继电器。HID 控制器内部“卡死且
+仍伪装 key-down”无法由本软件检测；因此正式比赛仍需现场人员、机械空间和官方停止方式。
+
+首次接入时保持狗趴卧、`enable_motion=false`。插入设备后执行：
+
+```bash
+ls -l /dev/input/by-id/*-event-kbd
+```
+
+把专用设备的完整稳定路径写入 `config/estop_hid.yaml`；禁止使用会随重启变化的
+`/dev/input/eventN`。编码器必须只映射 KEY_F12（Linux code 88），不得与相机、内置 GPIO
+按键或普通键盘共用。重建并重启服务后检查：
+
+```bash
+ros2 topic echo /mi_dog_real/emergency_stop_hid/status \
+  --qos-durability transient_local --qos-reliability reliable
+ros2 topic echo /mi_dog_real/emergency_stop_input
+ros2 topic echo /mi_dog_real/emergency_stop
+```
+
+验收顺序是：启动且按钮已释放仍闭锁；按下为 true；保持按下不反弹；人工复位后才变 false；
+拔 USB、断开任一触点线均变 true；重新插入后必须再完成按下—释放周期。全序列先在无运动
+模式完成，再谈零速度运控测试。
+
 ## 现场角色与环境
 
 - 一人负责电脑和口令，一人靠近独立急停；未完成独立急停验收前不做非零运动。
@@ -167,7 +201,7 @@ install -m 0755 /path/to/capture_deployment_manifest.sh \
 /home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh --source-commit COMMIT
 ```
 
-工具要求四种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
+工具要求五种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
 不要在存在重复节点时相信 `ros2 param get /mi_dog_real ...` 的单次结果。
 
 不得运行赛事镜像中的 `scp_to_cyberdog.sh`；它会删除或覆盖原厂运控目录。

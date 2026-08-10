@@ -1,0 +1,16 @@
+/**:
+  ros__parameters:
+    # Replace this only with the stable /dev/input/by-id path of the dedicated
+    # emergency-stop HID. Never use /dev/input/eventN in the deployed config.
+    device_path: "/dev/input/by-id/mi-dog-estop-event-kbd"
+    key_code: 88  # KEY_F12; configure the dedicated HID to emit this key.
+    # Use the mushroom button's NC contact: healthy/released means key held down;
+    # button press or signal-wire break means key up and therefore asserted.
+    assert_when_key_down: false
+    grab_device: true
+    reconnect_interval_sec: 0.25
+    publish_rate_hz: 50.0
+    output_topic: "/mi_dog_real/emergency_stop_input"
+    status_topic: "/mi_dog_real/emergency_stop_hid/status"
+    test_allow_non_character_device: false
+    test_initial_key_down: false

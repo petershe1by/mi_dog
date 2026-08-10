@@ -214,6 +214,27 @@ START/CONTINUE 状态机序列全部通过：
 `service_active=active`、`enable_motion=False`、`DOWN_WAITING`、`run_allowed=false`、
 `emergency_stop=true` 和 `estop_guard_status=input_missing`。
 
+## USB HID 常闭输入 ARM64 隔离测试
+
+日期：2026-08-10。以 Linux FIFO 代替实体 event 设备，仅在显式测试参数下允许非字符设备；
+正式 YAML 固定关闭该参数。输出重映射至 `/mi_dog_test/hid/output`，未连接真实运动话题。
+
+| 阶段 | 样本 true/false | 结果 |
+| --- | --- | --- |
+| 打开但触点开路 | 29/0 | 触发 |
+| NC 闭合、按钮正常 | 0/24 | 原始输入健康 |
+| 按下、NC 断开 | 24/0 | 触发 |
+| 人工释放、NC 闭合 | 0/24 | 原始输入健康 |
+| USB 断开 | 21/0 | 触发 |
+| USB 重连但仍开路 | 19/0 | 保持触发 |
+| 重连后 NC 闭合 | 0/24 | 原始输入健康 |
+
+七项断言全部通过，测试进程组完整回收。正式服务已启动 HID 节点；占位设备路径不存在时
+状态为 `open_failed:2`，原始输入持续为 true，守卫状态为 `input_asserted`，运动仍关闭。
+尚未测试真实 HID 的 `EVIOCGKEY/EVIOCGRAB`、实体触点抖动与电气故障。
+额外负向测试尝试让非字符测试设备发布到正式话题，进程以返回码 1 拒绝启动并报告
+`test devices may publish only under /mi_dog_test/`。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，

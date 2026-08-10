@@ -18,6 +18,7 @@
 | 实时 `run_allowed` | ESTOP、倾斜、过期、充电、运控错误撤销 | 隔离测试通过 |
 | 最终运动节点许可 | missing/false/stale 停止；fresh true 隔离放行 | ARM64 隔离测试通过 |
 | 急停软件守卫 | 启动、首次 false、按下/释放、超时、重连和重新解锁共 8 阶段 | ARM64 隔离测试通过 |
+| USB HID 常闭输入 | 启动开路、NC 正常、按下/释放、USB 断开/重连共 7 阶段 | ARM64 FIFO 隔离测试通过 |
 | 四足接触桥 | RF/LF/RR/LR 约 50 Hz，趴卧/站立均观察到 0.5 | 只读通过 |
 | 超声静态纸箱 | 0.8/0.5/0.3 m 三档数据 | 静态标定完成 |
 | 超声动态避障 | 多材质、偏置、低速动态 | 未完成 |
@@ -25,7 +26,7 @@
 | 头部 ToF 平地/黑布 | 20 帧平地和黑布数据 | 静态诊断通过 |
 | 真实落差检测 | 防坠工装、几何落差 | 未完成 |
 | 自动安全趴下 | 地面/空间判断并调用姿态动作 | 未实现 |
-| 独立急停硬件 | 实体按钮/接口、线缆断开、实测停止延迟和现场人员流程 | 未正式验收 |
+| 独立急停硬件 | 实体蘑菇按钮/HID、真实线缆断开、停止延迟和现场流程 | 未正式验收 |
 | 零速度官方时序 | `SERVO_START/DATA/END` 可重复记录 | 未完成 |
 | 非零运动适配 | 完整安全链和停止 watchdog | 未批准 |
 | 相机/定位比赛感知 | 替换 Gazebo 真值 | 未完成 |
@@ -47,6 +48,8 @@
 git diff --check
 python3 -m py_compile mi_dog_real/scripts/ground_tof_capture.py
 python3 -m py_compile mi_dog_real/scripts/estop_guard_isolated_test.py
+python3 -m py_compile mi_dog_real/scripts/estop_hid_input.py
+python3 -m py_compile mi_dog_real/scripts/estop_hid_isolated_test.py
 bash -n scripts/*.sh
 ```
 
