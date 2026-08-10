@@ -33,9 +33,11 @@
 - `暂停` 和头部触摸区双击也会清空当前命令并关闭门控；本机固件直接以
   `protocol/msg/TouchStatus.touch_state=3` 表示双击，同一次手势的重复上报由
   `touch_lockout_sec` 去重。
-- 节点在收到 `dog_wakeup=true` 后向 `continue_dialog` 发送 `true`，否则这台狗通常
-  只响应唤醒词而不发布 `asr_text`。原厂云端仍可能回答“暂时回答不上”；这不表示
-  控制失败，以 `operator_event` 和节点日志为准。
+- 2026-08-10 无 Wi-Fi 冷启动测试证明 `dog_wakeup` 和触摸事件可在本机产生；但打开
+  `continue_dialog` 后，原厂助手会与本程序共同消费语音。现场出现 `asr_text=站起来`，
+  本程序按白名单拒绝，原厂助手却执行了恢复站立 `motion_id=111`。因此正式配置现在固定
+  `manage_dialogue=false`，语音 START/CONTINUE/PAUSE/STOP 暂停验收；在自定义 ASR 与
+  原厂动作路由完全隔离前，只保留头部双击暂停。
 - 头部双击还会触发原厂电量播报；真机已验证它与 `PAUSE_TOUCH` 同时发生，可将
   电量播报视为双击被硬件识别的确认。
 - 识别文本入口为 `std_msgs/msg/String`，门控结果
@@ -185,7 +187,7 @@ ros2 run mi_dog_real ground_tof_capture.py --samples 20 --timeout 15
 可远程更换目标板的正式工装上标定。
 
 真人验收已覆盖 `启动 -> RUNNING`、头部双击 `-> PAUSED`、`恢复 -> RUNNING`；
-验收后系统被留在赛段1 `PAUSED`。
+该早期结果只证明事件链，不能推翻上述原厂动作冲突。验收后系统被留在赛段1 `PAUSED`。
 
 ## 首次接入（只读探测）
 

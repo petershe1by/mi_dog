@@ -32,7 +32,8 @@
     audio_feedback_service: "/speech_text_play"
     wake_event_topic: "/dog_wakeup"
     continue_dialog_topic: "/continue_dialog"
-    manage_dialogue: true
+    # Keep false until custom ASR is isolated from the factory posture/action route.
+    manage_dialogue: false
     wake_word_topic: "wake_word"
     wake_word: "铁蛋铁蛋"
     # Keep false for the stock default. Enable only to deliberately change it.

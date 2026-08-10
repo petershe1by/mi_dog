@@ -91,7 +91,7 @@ class MiDogRealNode final : public rclcpp::Node {
         declare_parameter<std::string>("wake_event_topic", "/dog_wakeup");
     const auto continue_dialog_topic =
         declare_parameter<std::string>("continue_dialog_topic", "/continue_dialog");
-    manage_dialogue_ = declare_parameter<bool>("manage_dialogue", true);
+    manage_dialogue_ = declare_parameter<bool>("manage_dialogue", false);
     const auto wake_word_topic = declare_parameter<std::string>("wake_word_topic", "wake_word");
     wake_word_ = declare_parameter<std::string>("wake_word", "铁蛋铁蛋");
     publish_wake_word_ = declare_parameter<bool>("publish_wake_word", false);
@@ -269,8 +269,16 @@ class MiDogRealNode final : public rclcpp::Node {
         wake_event_topic, 10,
         [this](std_msgs::msg::Bool::ConstSharedPtr wake) {
           if (!wake->data) return;
-          RCLCPP_INFO(get_logger(), "Wake event received; opening custom command recognition window.");
-          set_dialogue(true);
+          if (manage_dialogue_) {
+            RCLCPP_WARN(
+                get_logger(),
+                "Wake event received; opening dialogue also exposes the factory action route.");
+            set_dialogue(true);
+          } else {
+            RCLCPP_INFO(
+                get_logger(),
+                "Wake event received; dialogue management is disabled for factory-action isolation.");
+          }
         });
     audio_feedback_client_ = create_client<protocol::srv::AudioTextPlay>(
         audio_feedback_service);
@@ -491,7 +499,7 @@ class MiDogRealNode final : public rclcpp::Node {
   bool publish_wake_word_{false};
   bool touch_pause_enabled_{true};
   bool audio_feedback_enabled_{true};
-  bool manage_dialogue_{true};
+  bool manage_dialogue_{false};
   bool voice_enabled_{true};
   bool stop_sent_{false};
   bool emergency_stop_{false};

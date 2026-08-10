@@ -268,8 +268,34 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
 用户现场确认：开机、等待、唤醒和“暂停”期间外部 RJ45 网线已拔除，完成后才重新插入。
 `eth0: Link is Up` 不能反证这一观察，因为主控、运控板和外部网口的内部交换拓扑未有文档，
 机内链路可能维持 carrier。结论采用“用户物理确认 + 本机日志”：无外部网线冷启动、四节点
-自启、本机唤醒/暂停和离线提示音通过，全程无运动输出。尚未验证关闭 Wi-Fi 后的语音链，
-也不代表真机六赛段控制器已经完成。
+自启、本机唤醒/暂停和离线提示音通过，全程无运动输出。也不代表真机六赛段控制器已经完成。
+
+## 无外部网线且关闭 Wi-Fi 的冷启动（基础链通过，语音控制不安全）
+
+日期：2026-08-10。测试前用管理员权限执行 `nmcli radio wifi off`，确认 `wlan0=unavailable`
+且两个无线设备均为 soft blocked；随后关机、拔除外部 RJ45 并重新开机。系统于 `17:19:18`
+启动服务，四个正式节点于 `17:19:32` 出现，`17:19:33` 进入 `DOWN_WAITING`。完成后重新插入
+网线检查时，Wi-Fi 仍为 `disabled`，证明该轮启动没有无线网络。
+
+本机在 `17:20:15` 收到唤醒事件，`17:20:16` 收到头部双击并进入 `PAUSED`，离线确认音于
+`17:20:20` 完成；正式节点始终为 `enable_motion=False` 并持续记录 `no motion output`。
+但同一时刻 ASR 发布 `站起来`：本程序按精确白名单拒绝，原厂助手仍执行恢复站立，运控状态
+变为 `motion_id=111, progress=100`。这证明当前 `continue_dialog` 会同时打开原厂动作路径，
+不能作为比赛安全语音入口。
+
+现场安全门随后连续输出 `safe_to_lie_down=true/reason=ready`。首次误用底层 mode `7` 作为
+上层动作号被接口以 `code=3008` 拒绝；按原厂 `motion_id_map.toml` 改用高阻尼趴下动作
+`motion_id=101` 后返回 `result=true, code=0`，最终连续报告 `progress=100`。Wi-Fi 随后恢复，
+服务保持 active、supervisor 保持 `PAUSED`、急停守卫保持 `input_missing`。
+
+结论：无 RJ45、无 Wi-Fi 的 systemd、本机 DDS、唤醒、触摸暂停和离线提示音基础链通过；
+语音动作隔离失败。正式配置必须 `manage_dialogue=false`，在自定义识别与原厂动作路由隔离前
+不得把语音用于比赛启动、恢复、暂停或停止。
+
+安全回退随后在 ARM64 真机完成编译，`colcon build --packages-select mi_dog_real` 用时约
+1 分 41 秒并成功。服务于 `17:31:45` 重启，四节点恢复后实测 `manage_dialogue=False`、
+`enable_motion=False`、supervisor=`DOWN_WAITING`、急停守卫=`input_missing`，日志继续持续输出
+`no motion output`。
 
 ## 早期人工控制运动观察
 

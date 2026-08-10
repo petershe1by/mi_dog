@@ -27,7 +27,10 @@
     audio_feedback_service: "/mi_desktop_48_b0_2d_7a_fe_40/speech_text_play"
     wake_event_topic: "/mi_desktop_48_b0_2d_7a_fe_40/dog_wakeup"
     continue_dialog_topic: "/mi_desktop_48_b0_2d_7a_fe_40/continue_dialog"
-    manage_dialogue: true
+    # Disabled after the 2026-08-10 offline test: opening the stock dialogue
+    # path also allowed the factory assistant to execute a posture command.
+    # Do not re-enable until custom ASR is isolated from factory actions.
+    manage_dialogue: false
     wake_word_topic: "/mi_desktop_48_b0_2d_7a_fe_40/wake_word"
     wake_word: "铁蛋铁蛋"
     publish_wake_word: false

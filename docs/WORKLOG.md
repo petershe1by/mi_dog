@@ -156,6 +156,22 @@
   `16:33:42`，离线提示音完成且持续无运动输出。`eth0` carrier 不能映射外部插头状态，因
   主控/运控板内部网络拓扑未有文档；本轮按物理确认加日志判定单狗无外部网线启动通过。
 
+## 2026-08-10：无网线、无 Wi-Fi 冷启动与语音安全回退
+
+- 管理员关闭 Wi-Fi 后确认 `wlan0=unavailable`，用户关机、拔除外部 RJ45 并冷启动；重连检查
+  时 Wi-Fi 仍 disabled。服务 `17:19:18` 启动，四节点 `17:19:32` 出现，随后本机唤醒、
+  头部双击 `PAUSE_TOUCH` 和离线确认音均成功，正式节点持续 `enable_motion=False`。
+- ASR 同时发布 `站起来`；本程序白名单拒绝，但原厂助手执行恢复站立 `motion_id=111`。
+  这说明 `continue_dialog` 不是隔离的自定义识别通道，当前语音方案不能用于比赛安全控制。
+- 安全门确认 `safe_to_lie_down=true/reason=ready` 后，按官方映射调用高阻尼趴下动作
+  `motion_id=101`，返回 `result=true, code=0`，最终 `progress=100`。Wi-Fi 随后恢复；服务
+  active、supervisor `PAUSED`、急停 `input_missing`、运动总开关 false。
+- 正式配置改为 `manage_dialogue=false`。下一步先设计不进入原厂动作路由的本机关键词识别，
+  在隔离/架空工装验证后，才可重新启用任何语音比赛事件。
+- C++ 默认值和通用真机配置也改为 false；ARM64 构建约 1 分 41 秒成功。服务 `17:31:45`
+  重启后实测 `manage_dialogue=False`、`enable_motion=False`、supervisor `DOWN_WAITING`、急停
+  `input_missing`，四节点 active 且持续无运动输出。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、
