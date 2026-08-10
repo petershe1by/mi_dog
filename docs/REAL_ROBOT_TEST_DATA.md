@@ -207,6 +207,13 @@ START/CONTINUE 状态机序列全部通过：
 输入，日志为 `input_missing; output_asserted=1`，`enable_motion=False`。这只证明软件失效
 安全语义，不包含实体按钮电气故障、线缆断开和真实停车延迟。
 
+最终部署清单为机器狗上的
+`/home/mi/mi_dog_ws/state/deployment_manifest_20260810T141742+0800.txt`：
+`source_commit=8d42be0`，清单 SHA256 为
+`907a4211a2abb6773bd4fb185ba0d75a575d27b791bb5937532f25f475560228`。清单实时记录
+`service_active=active`、`enable_motion=False`、`DOWN_WAITING`、`run_allowed=false`、
+`emergency_stop=true` 和 `estop_guard_status=input_missing`。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，

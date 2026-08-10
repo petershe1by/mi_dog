@@ -67,6 +67,8 @@
 - 正式配置：`this_robot_sensor_only.yaml`，强制 `enable_motion=false`
 - 对应仓库基线：以机器狗最新 `deployment_manifest_*.txt` 的 `source_commit` 为准；清单固定
   四枚 ARM64 二进制、三份配置、启动脚本、清单脚本和 systemd unit 的 SHA256。
+- 当前部署清单：`deployment_manifest_20260810T141742+0800.txt`，`source_commit=8d42be0`，
+  文件 SHA256 为 `907a4211a2abb6773bd4fb185ba0d75a575d27b791bb5937532f25f475560228`。
 
 ## 当前阻塞项
 
