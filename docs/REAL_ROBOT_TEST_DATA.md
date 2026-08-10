@@ -235,6 +235,13 @@ START/CONTINUE 状态机序列全部通过：
 额外负向测试尝试让非字符测试设备发布到正式话题，进程以返回码 1 拒绝启动并报告
 `test devices may publish only under /mi_dog_test/`。
 
+当前 v2 部署清单为
+`/home/mi/mi_dog_ws/state/deployment_manifest_20260810T143522+0800.txt`，
+`source_commit=bc8fc89`，清单 SHA256 为
+`b91d3cba13c2e1f84a45a48da3152bb0acd5f39e15dbb4b9c1feeb319a76ce2b`。它记录五个唯一
+进程、`DOWN_WAITING/run_allowed=false`、`enable_motion=False`、`emergency_stop=true`、
+HID `open_failed:2` 和守卫 `input_asserted`，并哈希 HID 脚本与配置。
+
 ## 早期人工控制运动观察
 
 这些试验发生在安全场地，由用户现场确认，但没有保存同步里程计、轨迹文件或控制版本，

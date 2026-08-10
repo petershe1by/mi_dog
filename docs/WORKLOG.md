@@ -118,6 +118,8 @@
   模式同时强制稳定 `/dev/input/by-id/` 路径。
 - 正式无运动服务现有五个节点。设备未接入时 HID 状态 `open_failed:2`、原始输入 true、守卫
   `input_asserted`、`enable_motion=False`，没有运动输出。
+- 提交 `bc8fc89` 后生成 v2 清单 `deployment_manifest_20260810T143522+0800.txt`，SHA256
+  `b91d3cba13c2e1f84a45a48da3152bb0acd5f39e15dbb4b9c1feeb319a76ce2b`。
 - 仍缺实体编码器和蘑菇按钮，因此真实 HID ioctl、接点抖动、导线断开与停车延迟未验收；该
   单通道方案也不是认证安全继电器。
 
