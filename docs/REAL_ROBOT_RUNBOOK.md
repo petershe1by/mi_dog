@@ -136,6 +136,17 @@ sudo systemctl restart mi-dog-real-sensor.service
 systemctl is-active mi-dog-real-sensor.service
 ```
 
+把清单工具安装到工作区后生成只读清单：
+
+```bash
+install -m 0755 /path/to/capture_deployment_manifest.sh \
+  /home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh
+/home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh --source-commit COMMIT
+```
+
+工具要求三种正式节点各只有一个进程；若隔离测试留下同名孤儿进程，它会拒绝生成清单。
+不要在存在重复节点时相信 `ros2 param get /mi_dog_real ...` 的单次结果。
+
 不得运行赛事镜像中的 `scp_to_cyberdog.sh`；它会删除或覆盖原厂运控目录。
 
 ## 故障排查
@@ -149,6 +160,7 @@ systemctl is-active mi-dog-real-sensor.service
 | 显示充电闭锁 | 拔线状态、BMS、`switch_status` | 真实充电不得运动；残留 14 时正常重启 |
 | ToF 对纸箱不变 | 这是向下看的地面传感器 | 正前障碍使用超声/雷达，不改成危险阈值 |
 | `run_allowed` 过期 | supervisor 服务和 DDS | 最终适配器会自动停止；先修通信 |
+| 参数与 YAML 不符 | `ps`、重复 node name、清单工具 | 先精确清理隔离测试孤儿，再重新采集 |
 
 ## 收尾
 

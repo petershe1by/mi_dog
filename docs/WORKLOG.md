@@ -69,6 +69,25 @@
 9. 语音只产生白名单事件，不直接产生方向或速度。
 10. 无原始遥测的人工观察不升级为精确标定结论。
 
+## 2026-08-10 13:47 至 13:55：部署清单与测试孤儿故障
+
+- 新增只读部署清单工具，记录 commit、平台、服务、实时参数、状态和关键文件 SHA256。
+- 首次采集异常显示 `enable_motion=True`；进程审计发现三次隔离运动测试和三次 supervisor
+  回放留下 PPID=1 的孤儿进程。
+- 三个隔离运动节点只发布 `/mi_dog_test/motion_output`，该话题订阅数为 0，没有连接真实
+  `motion_servo_cmd`；但它们与正式节点同名，污染了 ROS 参数查询。
+- 精确对六个已核实测试 PID 发送 SIGTERM，没有终止正式 systemd 进程。ROS graph 清理后
+  只剩一个 `mi_dog_real`、一个 supervisor 和一个 bridge。
+- 正式参数复核为 `enable_motion=False`、`require_supervisor_run_allowed=True`；正式状态为
+  `DOWN_WAITING/run_allowed=false`。
+- 工具随后改为要求三类节点进程数各等于 1，并通过 rclpy 读取持久化状态；存在重复进程、
+  空参数或话题超时时不生成清单。
+- 使用只执行 `sleep` 的伪同名进程验证重复保护：工具准确报告 2 个节点进程、返回失败，且
+  没有写出无效清单；伪进程随后按 PID 回收。
+- 13:55 最终清单保存于机器狗 `state/deployment_manifest_20260810T135515+0800.txt`，并把
+  清单工具自身纳入哈希；前两份分别重命名为 `invalid-duplicate-nodes` 和
+  `invalid-empty-topics`，保留故障证据。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、

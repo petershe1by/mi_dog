@@ -58,10 +58,12 @@
 - 主控工作区：`/home/mi/mi_dog_ws`
 - 源码：`/home/mi/mi_dog_ws/src/mi_dog_real`
 - 状态文件：`/home/mi/mi_dog_ws/state/supervisor_checkpoint.txt`
+- 部署清单：`/home/mi/mi_dog_ws/state/deployment_manifest_*.txt`
 - 服务：`mi-dog-real-sensor.service`
 - 启动脚本：`/home/mi/mi_dog_ws/scripts/run_sensor_gate.sh`
 - 正式配置：`this_robot_sensor_only.yaml`，强制 `enable_motion=false`
-- 对应仓库基线：已部署源码和配置与 `c19ef2b` 一致；以后部署应把 commit 写入交接记录。
+- 对应仓库基线：已部署源码和配置与 `c19ef2b` 一致；2026-08-10 已用自动清单固定
+  三枚 ARM64 二进制、两份配置、启动脚本和 systemd unit 的 SHA256。
 
 ## 当前阻塞项
 
@@ -79,9 +81,9 @@
 不要直接开启运动。按以下顺序继续：
 
 1. 阅读本目录全部文档，确认机器狗未充电、场地清空且有人持独立急停。
-2. 执行 [真机操作手册](REAL_ROBOT_RUNBOOK.md) 的只读检查，保存服务与话题输出。
-3. 把当前 Git commit、机器狗安装文件哈希和配置哈希写入工作记录。
-4. 在隔离话题复测 supervisor 与最终运动许可门。
+2. 执行 [真机操作手册](REAL_ROBOT_RUNBOOK.md) 的只读检查并生成新部署清单。
+3. 检查没有重复节点或隔离测试孤儿；清单工具会在进程数不为 1 时拒绝生成。
+4. 在隔离话题复测 supervisor 与最终运动许可门，测试必须回收整个子进程组。
 5. 设计并验收独立急停；在此之前保持 `enable_motion=false`。
 6. 仅做零速度官方时序测试，确认停止帧和 watchdog，不做赛道运动。
 7. 建立防坠落差工装，完成地面 ToF 标定和动态超声测试。

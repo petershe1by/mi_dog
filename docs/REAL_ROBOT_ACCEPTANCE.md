@@ -7,6 +7,7 @@
 | 有线网络与 SSH | `192.168.44.1` 主控可登录；ROS 2 topic 可发现 | 通过 |
 | ARM64 构建 | `mi_dog_real` 在狗上 Galactic/`protocol 1.0.0` 构建 | 通过 |
 | 开机无运动服务 | systemd active，配置固定 `enable_motion=false` | 通过 |
+| 部署版本清单 | 单进程检查、实时参数、状态及关键文件 SHA256 | 通过 |
 | 唤醒与 ASR | `铁蛋铁蛋` 后产生 `dog_wakeup/asr_text` | 通过 |
 | 精确短口令 | `启动/恢复/暂停/终止` 映射结构化事件 | 通过 |
 | 双击暂停 | `touch_state=3`，1.5 秒去重，产生 `PAUSE_TOUCH` | 通过 |

@@ -79,6 +79,7 @@ safe_cmd_vel ──────────────────────�
 | `scripts/smoke_test.sh` | 检查仿真基础设施，不替代全程验收 |
 | `scripts/start_sim.sh` | 容器内启动 Gazebo、控制器和自治节点 |
 | `scripts/run_sensor_gate.sh` | 真机 ROS 环境和 CycloneDDS 环境设置 |
+| `scripts/capture_deployment_manifest.sh` | 拒绝重复节点并记录真机进程、参数和 SHA256 |
 | `systemd/mi-dog-real-sensor.service` | 真机开机自启的无运动服务单元 |
 
 ## 关键真机接口

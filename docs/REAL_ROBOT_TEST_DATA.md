@@ -25,6 +25,22 @@
 | 最后代码基线 | `c19ef2b` | A |
 | 最近一次记录电量 | 100%（未保存连续放电曲线） | B |
 
+2026-08-10 13:55 的最终有效部署清单：
+
+| 文件 | SHA256 |
+| --- | --- |
+| `mi_dog_real_node` | `afbe203793102d601daf14d38fa1fc30c7cf9c772c6990d5d3311a9832a7c184` |
+| `mi_dog_supervisor_node` | `78dfc8a9c023af92e87632e212fba186d89147a11b1171798cf807c99acbd922` |
+| `mi_dog_state_bridge_node` | `7b51445b54817013496806c6125a5fb72a685ae9de981c4fb25559ebb87c54ed` |
+| `this_robot_sensor_only.yaml` | `e270a9953fa2d905d6844e90c2b1cd0dc70ff04a85d085536623d1a2d8f7e04c` |
+| `supervisor.yaml` | `aba4cf5dd3c531fdf4d4823bceeaf55ffae210e4f09b7f07566d65f226b2cc57` |
+| `run_sensor_gate.sh` | `df263d878364957793dbd3f48de6f0421c20f8ad52df77c99fafc174c5cf5a74` |
+| `capture_deployment_manifest.sh` | `da5a6f805669150e30e5fea32cdf7510fba9f95a1af1499965e7dd6fa6f1c9b1` |
+| systemd unit | `e9191a108dd8b88d16df9c14ddf7474c4a8c1e530b5e3dcb49573adcc0eea97f` |
+
+同一清单记录 `service=active`、`enable_motion=False`、supervisor `DOWN_WAITING`、
+`run_allowed=false`。两份配置哈希与仓库一致。
+
 ## 数据频率和安全参数
 
 | 数据/参数 | 数值 | 来源/等级 |
