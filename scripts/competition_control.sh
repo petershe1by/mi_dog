@@ -3,16 +3,21 @@ set -euo pipefail
 
 target="${MI_DOG_TARGET:-mi@192.168.44.1}"
 action=""
+stage=""
 connect_timeout=5
 
 usage() {
   cat <<'EOF'
-Usage: competition_control.sh [--target USER@HOST] ACTION
+Usage: competition_control.sh [--target USER@HOST] [--stage 1..6] ACTION
 
 Actions:
   status     Read service, supervisor state, stage, and run permission.
   start      Request START from stage 1 through the supervisor safety gate.
   continue   Request CONTINUE from the saved stage through the safety gate.
+  select-stage
+             Select and persist a stage while stopped; motion remains inhibited.
+  continue-stage
+             Select a stage, then request CONTINUE through the safety gate.
   pause      Revoke run permission and enter PAUSED.
   stop       Latch the supervisor in EMERGENCY_STOP.
   restart    Restart the sensor/competition service; it returns to DOWN_WAITING.
@@ -30,11 +35,16 @@ while [[ $# -gt 0 ]]; do
       target="$2"
       shift 2
       ;;
+    --stage)
+      [[ $# -ge 2 ]] || { usage >&2; exit 2; }
+      stage="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
       ;;
-    status|start|continue|pause|stop|restart)
+    status|start|continue|select-stage|continue-stage|pause|stop|restart)
       [[ -z "$action" ]] || { usage >&2; exit 2; }
       action="$1"
       shift
@@ -51,6 +61,16 @@ if [[ -z "$action" || -z "$target" || "$target" =~ [[:space:]] ]]; then
   exit 2
 fi
 
+if [[ "$action" == select-stage || "$action" == continue-stage ]]; then
+  if [[ ! "$stage" =~ ^[1-6]$ ]]; then
+    echo "--stage must be an integer from 1 through 6." >&2
+    exit 2
+  fi
+elif [[ -n "$stage" ]]; then
+  echo "--stage is only valid with select-stage or continue-stage." >&2
+  exit 2
+fi
+
 ssh_options=(
   -o StrictHostKeyChecking=accept-new
   -o "ConnectTimeout=$connect_timeout"
@@ -61,12 +81,22 @@ if [[ -n "${MI_DOG_SSH_CONTROL_PATH:-}" ]]; then
     -o "ControlPath=$MI_DOG_SSH_CONTROL_PATH"
   )
 fi
+if [[ "${MI_DOG_SSH_BATCH_MODE:-0}" == 1 ]]; then
+  ssh_options+=(
+    -o BatchMode=yes
+  )
+fi
+if [[ -n "${MI_DOG_SSH_IDENTITY:-}" ]]; then
+  ssh_options+=(
+    -o IdentitiesOnly=yes
+    -i "$MI_DOG_SSH_IDENTITY"
+  )
+fi
 
 if [[ "$action" == restart ]]; then
-  ssh -tt "${ssh_options[@]}" "$target" \
-    'supervisor_pattern="^/home/mi/mi_dog_ws/install/mi_dog_real/lib/mi_dog_real/mi_dog_supervisor_node "
+  restart_command='supervisor_pattern="^/home/mi/mi_dog_ws/install/mi_dog_real/lib/mi_dog_real/mi_dog_supervisor_node "
      old_supervisor="$(pgrep -f "$supervisor_pattern" | head -n 1 || true)"
-     sudo systemctl restart mi-dog-real-sensor.service &&
+     SUDO_PLACEHOLDER systemctl restart mi-dog-real-sensor.service &&
      for attempt in $(seq 1 90); do
        new_supervisor="$(pgrep -f "$supervisor_pattern" | head -n 1 || true)"
        if [ "$(systemctl is-active mi-dog-real-sensor.service 2>/dev/null)" = active ] &&
@@ -80,6 +110,13 @@ if [[ "$action" == restart ]]; then
      done
      systemctl status mi-dog-real-sensor.service --no-pager
      exit 1'
+  if [[ "${MI_DOG_SSH_BATCH_MODE:-0}" == 1 ]]; then
+    restart_command="${restart_command/SUDO_PLACEHOLDER/sudo -n}"
+    ssh "${ssh_options[@]}" "$target" "$restart_command"
+  else
+    restart_command="${restart_command/SUDO_PLACEHOLDER/sudo}"
+    ssh -tt "${ssh_options[@]}" "$target" "$restart_command"
+  fi
   exit
 fi
 
@@ -87,11 +124,13 @@ event=""
 case "$action" in
   start) event=START ;;
   continue) event=CONTINUE ;;
+  continue-stage) event=CONTINUE ;;
   pause) event=PAUSE ;;
   stop) event=STOP ;;
 esac
 
-ssh "${ssh_options[@]}" "$target" bash -s -- "$event" <<'REMOTE_CONTROL'
+transport_event="${event:-NONE}"
+ssh "${ssh_options[@]}" "$target" bash -s -- "$transport_event" "$stage" <<'REMOTE_CONTROL'
 set -eo pipefail
 
 set +u
@@ -105,17 +144,20 @@ export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
 
 echo "service_active=$(systemctl is-active mi-dog-real-sensor.service 2>/dev/null || true)"
 
-event="${1:-}"
-python3 - "$event" <<'PY'
+event="${1:-NONE}"
+[[ "$event" == NONE ]] && event=""
+stage="${2:-}"
+python3 - "$event" "$stage" <<'PY'
 import sys
 import time
 
 import rclpy
+from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool, Int32, String
 
-event = sys.argv[1]
+event, stage_arg = sys.argv[1:]
 allowed_events = {"", "START", "CONTINUE", "PAUSE", "STOP"}
 if event not in allowed_events:
     raise SystemExit("Refusing unknown operator event")
@@ -148,6 +190,42 @@ subscriptions.append(node.create_subscription(
     String, "/mi_dog_real/supervisor/lie_down_safety_reason",
     save("safety_reason"), latched))
 
+enable_motion = "unknown"
+parameter_client = node.create_client(GetParameters, "/mi_dog_real/get_parameters")
+if parameter_client.wait_for_service(timeout_sec=2.0):
+    request = GetParameters.Request()
+    request.names = ["enable_motion"]
+    future = parameter_client.call_async(request)
+    rclpy.spin_until_future_complete(node, future, timeout_sec=3.0)
+    if future.done() and future.result() and future.result().values:
+        enable_motion = str(future.result().values[0].bool_value)
+print(f"enable_motion={enable_motion}")
+
+stage_publisher = None
+selected_stage = int(stage_arg) if stage_arg else None
+if selected_stage is not None:
+    if selected_stage not in range(1, 7):
+        raise SystemExit("Refusing stage outside 1..6")
+    stage_publisher = node.create_publisher(
+        Int32, "/mi_dog_real/supervisor/select_stage", QoSProfile(depth=10))
+    deadline = time.monotonic() + 2.0
+    while stage_publisher.get_subscription_count() < 1 and time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.1)
+    if stage_publisher.get_subscription_count() < 1:
+        raise SystemExit("Supervisor stage-select subscriber is unavailable")
+    message = Int32()
+    message.data = selected_stage
+    stage_publisher.publish(message)
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.1)
+        if values.get("stage") == str(selected_stage):
+            break
+    if values.get("stage") != str(selected_stage):
+        raise SystemExit(
+            f"Stage selection rejected; current stage={values.get('stage', '<missing>')}")
+    print(f"stage_selected={selected_stage}")
+
 publisher = None
 if event:
     publisher = node.create_publisher(
@@ -175,5 +253,16 @@ node.destroy_node()
 rclpy.shutdown()
 if len(values) != 4:
     raise SystemExit("Timed out reading supervisor state")
+expected_state = {
+    "START": "RUNNING",
+    "CONTINUE": "RUNNING",
+    "PAUSE": "PAUSED",
+    "STOP": "EMERGENCY_STOP",
+}.get(event)
+if expected_state and values.get("state") != expected_state:
+    raise SystemExit(
+        f"event_rejected={event}; expected_state={expected_state}; "
+        f"actual_state={values.get('state', '<missing>')}"
+    )
 PY
 REMOTE_CONTROL

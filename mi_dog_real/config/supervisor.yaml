@@ -2,6 +2,7 @@
   ros__parameters:
     operator_event_topic: "/mi_dog_real/operator_event"
     stage_complete_topic: "/mi_dog_real/stage_complete"
+    stage_select_topic: "/mi_dog_real/supervisor/select_stage"
     state_topic: "/mi_dog_real/supervisor/state"
     stage_topic: "/mi_dog_real/supervisor/current_stage"
     pause_request_topic: "/mi_dog_real/supervisor/pause_request"

@@ -258,6 +258,26 @@
   `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING/run_allowed=false`，并写入
   `UDisk,charge,download`、无网络依赖、电脑白名单操作以及不要求额外急停/语音控制。
 
+## 2026-08-12 后续：本地比赛 UI、SSH 与赛段选择
+
+- 用户拔除充电线后只读确认 `enable_motion=False`、`manage_dialogue=False`、安全原因 `ready`，
+  随后完成安全整机重启。使用正确的正式图像话题 8.081 秒取得 71 帧（约 8.786 Hz）；再重启
+  本项目服务后仍持续 `camera=1 lidar=1 pose=1; no motion output`，相机生命周期恢复项关闭。
+- 新增 localhost Web UI：每次启动随机令牌、命令/参数白名单、状态卡片、START/PAUSE/STOP、
+  服务重启、赛段选择继续、六向低速调试键和操作日志。浏览器不保存 SSH 密码。
+- 新增专用 Ed25519 SSH 与 `connect_robot.sh`。机器狗原 `.ssh` 为 root 所有且无
+  `authorized_keys`，先用 sudo 修正为 `mi:mi` 的 0700/0600，再成功安装公钥；批处理 status
+  通过。XTerminal 可直接连接 `mi@192.168.44.1:22`。
+- supervisor 增加独立 `select_stage`：只在 `DOWN_WAITING/PAUSED` 接受 1..6，持久化检查点但
+  不自动运行。ARM64 构建 1 分 40 秒通过；正式 stage 4 与 UI stage 2 流程通过。
+- 新增可重复隔离测试，10 项覆盖等待/暂停选段、非法值、STOP态拒绝、持久化和重启闭锁，
+  全部通过并完整回收测试进程。
+- 正式服务始终 `enable_motion=False`。前进调试脉冲返回码3并报告
+  `jog_refused=enable_motion_False`；零速度 STOP 可发送。UI STOP 锁存
+  `EMERGENCY_STOP/run_allowed=false`，最终重启并恢复 stage 1 `DOWN_WAITING/false`。
+- UI 批处理重启改用 `sudo -n`：当前没有限权免密规则时立即失败且服务不变，不会等待密码。
+  仅限该 unit 的 NOPASSWD 配置因属于持久权限扩大，等待用户明确批准。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、

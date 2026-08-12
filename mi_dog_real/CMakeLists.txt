@@ -36,6 +36,7 @@ install(PROGRAMS
   scripts/estop_guard_isolated_test.py
   scripts/estop_hid_input.py
   scripts/estop_hid_isolated_test.py
+  scripts/supervisor_stage_select_isolated_test.py
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})

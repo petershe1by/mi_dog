@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="mi-dog-token" content="__MI_DOG_TOKEN__">
+  <meta name="mi-dog-target" content="__MI_DOG_TARGET__">
+  <title>铁蛋比赛控制台</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">CYBERDOG 2 · LOCAL CONTROL</p>
+        <h1>铁蛋比赛控制台</h1>
+        <p class="sub">控制决策在狗内置主控运行；本页只发送白名单操作或短时调试脉冲。</p>
+      </div>
+      <div id="connectionBadge" class="badge offline">未连接</div>
+    </header>
+
+    <section class="status-grid" aria-label="机器狗状态">
+      <article><span>服务</span><strong id="service">—</strong></article>
+      <article><span>状态</span><strong id="state">—</strong></article>
+      <article><span>赛段</span><strong id="stage">—</strong></article>
+      <article><span>运动许可</span><strong id="runAllowed">—</strong></article>
+      <article><span>运动总开关</span><strong id="motionEnabled">—</strong></article>
+      <article class="wide"><span>安全原因</span><strong id="reason">—</strong></article>
+    </section>
+
+    <section class="panel primary-panel">
+      <div class="panel-title">
+        <div><p class="kicker">比赛操作</p><h2>开始、暂停与失能</h2></div>
+        <button class="ghost" id="refreshButton">刷新状态</button>
+      </div>
+      <div class="action-row">
+        <button class="action start" data-action="start">一键启动</button>
+        <button class="action pause" data-action="pause">暂停</button>
+        <button class="action disable" data-action="stop">立即失能</button>
+        <button class="action restart" data-action="restart">重启进程</button>
+      </div>
+      <div class="stage-row">
+        <label for="stageSelect">从指定赛段继续</label>
+        <select id="stageSelect">
+          <option value="1">赛段 1 · 石径</option>
+          <option value="2">赛段 2 · 橙球阵</option>
+          <option value="3">赛段 3 · 曲道</option>
+          <option value="4">赛段 4 · 隧道</option>
+          <option value="5">赛段 5 · 独木桥</option>
+          <option value="6">赛段 6 · 足球与终点</option>
+        </select>
+        <button class="action continue" id="continueStage">选择并继续</button>
+      </div>
+    </section>
+
+    <section class="two-column">
+      <section class="panel">
+        <div class="panel-title">
+          <div><p class="kicker">调试模式</p><h2>简单移动</h2></div>
+          <span class="lock" id="jogLock">默认锁定</span>
+        </div>
+        <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足 enable_motion=True 和 run_allowed=true。</p>
+        <div class="jog-pad">
+          <button data-jog="turn-left">↶ 左转</button>
+          <button data-jog="forward">↑ 前进</button>
+          <button data-jog="turn-right">右转 ↷</button>
+          <button data-jog="left">← 左移</button>
+          <button class="jog-stop" data-jog="stop">■ 停止</button>
+          <button data-jog="right">右移 →</button>
+          <span></span>
+          <button data-jog="backward">↓ 后退</button>
+          <span></span>
+        </div>
+      </section>
+
+      <section class="panel remote-panel">
+        <div class="panel-title"><div><p class="kicker">直连维护</p><h2>远程连接</h2></div></div>
+        <p class="target" id="target">__MI_DOG_TARGET__</p>
+        <code id="sshCommand">./scripts/connect_robot.sh</code>
+        <div class="remote-actions">
+          <button class="ghost" id="copySsh">复制连接命令</button>
+          <button class="ghost" id="testConnection">测试连接</button>
+        </div>
+        <p class="hint">首次使用先在终端运行 <code>./scripts/setup_robot_ssh_key.sh</code>。密钥只用于这台狗，UI 不保存密码。</p>
+      </section>
+    </section>
+
+    <section class="console" aria-live="polite">
+      <div><span>操作记录</span><button id="clearLog">清空</button></div>
+      <pre id="log">等待操作…</pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

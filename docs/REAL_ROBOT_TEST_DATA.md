@@ -69,6 +69,25 @@
 RealSense 进程，但客户端等待响应超时，`/image` 无发布；正式节点持续报告
 `camera=0 lidar=1 pose=1; no motion output`。这不撤销此前相机链的正向测量，但说明原厂相机
 不适合随本服务反复停启。当前恢复项是下次整机安全重启后验证“图像保留跨服务重启”策略。
+
+同日拔除充电线后整机重启，正式命名空间
+`/mi_desktop_48_b0_2d_7a_fe_40/image` 在 8.081 秒取得 71 帧，约 8.786 Hz；随后仅重启
+`mi-dog-real-sensor.service`，日志继续稳定为 `camera=1 lidar=1 pose=1; no motion output`。
+因此相机恢复及“跨本服务重启保留原厂图像”策略通过；早先 `/image` 零帧探针属于话题名错误。
+
+## UI、SSH 与赛段选择
+
+- 专用 Ed25519 密钥安装后，批处理 SSH `status` 成功；XTerminal 参数为
+  `mi@192.168.44.1:22`。
+- ARM64 隔离测试 10 项全部通过：初始赛段1等待、等待态选6、不自动运行、PAUSE、暂停态选5、
+  非法7拒绝、STOP锁存、STOP态拒绝选段、重启恢复赛段5但强制等待，以及订阅者就绪。
+- 正式无运动服务选择赛段4并 CONTINUE 得到 `RUNNING/stage=4/run_allowed=true`，但
+  `enable_motion=False`，前进脉冲以返回码3拒绝；PAUSE/STOP 后许可为 false。随后重启并恢复
+  `DOWN_WAITING/stage=1/run_allowed=false`。
+- 本地 UI 真实 API 依次验证 status、PAUSE、选择赛段2并继续、前进拒绝和 STOP；STOP 后为
+  `EMERGENCY_STOP/stage=2/run_allowed=false`。最终已重启恢复赛段1安全等待。
+- UI 批处理重启使用 `sudo -n`；未配置限权 sudo 时立即以“需要密码”失败，0 秒返回且服务未变。
+  一键重启仍待用户明确批准仅限该 systemd unit 的 NOPASSWD 规则。
 | `/pose_filtered`、`dog_pose`、`tracking_pose_transformed` | 均 0/6.02 s | 2026-08-12 只读计数，B |
 | BMS | 约 1 Hz | 现场观察，B |
 | `contactEstimate[4]` | 约 50 Hz | LCM 桥，B |

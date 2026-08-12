@@ -124,6 +124,16 @@ ros2 param get /mi_dog_real enable_motion
 SSH/sudo 提示中交互输入，不存储。`pause` 应返回 `PAUSED/run_allowed=false`；`restart` 后应
 返回 active，并按设计进入 `DOWN_WAITING`。
 
+图形界面和 XTerminal 设置见 [比赛控制 UI](COMPETITION_UI.md)。首次安装专用密钥后运行：
+
+```bash
+./scripts/start_competition_ui.sh
+```
+
+指定赛段使用 `select_stage` 单独入口，只在等待/暂停态有效；“选择并继续”先确认检查点真的
+改变，再发送 CONTINUE。UI 的移动键属于调试模式，不是比赛人工方向控制；当前运动总开关为
+false 时必须显示锁定并拒绝非零脉冲。
+
 ## 单狗离线比赛模式
 
 正式比赛不使用电脑作为算力节点。可按现场需要使用直连网线发送上述结构化操作，也可拔除

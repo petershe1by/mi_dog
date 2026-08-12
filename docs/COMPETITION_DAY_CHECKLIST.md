@@ -28,6 +28,9 @@
 ./scripts/competition_control.sh restart
 ```
 
+也可运行 `./scripts/start_competition_ui.sh` 使用本地控制台；XTerminal 连接参数见
+[`COMPETITION_UI.md`](COMPETITION_UI.md)。调试移动键不得用于比赛人工方向控制。
+
 密码只在 SSH/sudo 交互提示中输入，不写入脚本、文档或 shell 历史。脚本不提供方向、速度、
 步态和姿态参数。`restart` 只恢复已保存赛段号，状态强制回到 `DOWN_WAITING`，不会自动运动。
 

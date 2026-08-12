@@ -86,6 +86,10 @@ safe_cmd_vel ──────────────────────�
 | `scripts/smoke_test.sh` | 检查仿真基础设施，不替代全程验收 |
 | `scripts/start_sim.sh` | 容器内启动 Gazebo、控制器和自治节点 |
 | `scripts/competition_control.sh` | 电脑端比赛操作入口；只发送白名单事件或重启服务，不发送运动命令 |
+| `scripts/competition_ui.py` + `ui/` | 仅本机监听的比赛 Web UI；随机令牌、固定白名单、状态展示和调试移动门 |
+| `scripts/robot_jog.sh` | 0.25 秒低速调试脉冲；非零指令要求运动总开关和 supervisor 许可同时成立 |
+| `scripts/connect_robot.sh` | 使用专用 SSH 密钥连接狗主控，适合作为 XTerminal 外的维护后备 |
+| `scripts/setup_robot_ssh_key.sh` | 一次性创建和安装 UI 专用 Ed25519 公钥，不保存密码 |
 | `scripts/run_sensor_gate.sh` | 真机 ROS 环境和 CycloneDDS 环境设置 |
 | `scripts/capture_deployment_manifest.sh` | 拒绝重复节点并记录真机进程、参数和 SHA256 |
 | `systemd/mi-dog-real-sensor.service` | 真机开机自启的无运动服务单元 |
@@ -97,6 +101,7 @@ safe_cmd_vel ──────────────────────�
 | `/mi_dog_real/operator_event` | `std_msgs/String` | 电脑控制脚本或 `mi_dog_real_node` | `START/CONTINUE/PAUSE/PAUSE_TOUCH/STOP` |
 | `/mi_dog_real/supervisor/state` | `std_msgs/String` | supervisor | 持久化比赛状态 |
 | `/mi_dog_real/supervisor/current_stage` | `std_msgs/Int32` | supervisor | 当前赛段 1..6 |
+| `/mi_dog_real/supervisor/select_stage` | `std_msgs/Int32` | 电脑控制脚本/UI | 仅等待/暂停态接受 1..6，持久化但不自动继续 |
 | `/mi_dog_real/supervisor/run_allowed` | `std_msgs/Bool` | supervisor | 最终运动许可，运动节点要求 0.5 秒内新鲜 |
 | `/mi_dog_real/supervisor/safe_to_lie_down` | `std_msgs/Bool` | supervisor | 只读姿态许可，不会自动执行趴下 |
 | `/mi_dog_real/supervisor/lie_down_safety_reason` | `std_msgs/String` | supervisor | 机器可读的闭锁原因 |

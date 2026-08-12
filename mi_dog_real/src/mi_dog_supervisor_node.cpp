@@ -54,6 +54,8 @@ class MiDogSupervisorNode final : public rclcpp::Node {
         "operator_event_topic", "/mi_dog_real/operator_event");
     const auto stage_complete_topic = declare_parameter<std::string>(
         "stage_complete_topic", "/mi_dog_real/stage_complete");
+    const auto stage_select_topic = declare_parameter<std::string>(
+        "stage_select_topic", "/mi_dog_real/supervisor/select_stage");
     const auto state_topic = declare_parameter<std::string>(
         "state_topic", "/mi_dog_real/supervisor/state");
     const auto stage_topic = declare_parameter<std::string>(
@@ -115,6 +117,11 @@ class MiDogSupervisorNode final : public rclcpp::Node {
         stage_complete_topic, 10,
         [this](std_msgs::msg::Int32::ConstSharedPtr message) {
           handle_stage_complete(message->data);
+        });
+    stage_select_sub_ = create_subscription<std_msgs::msg::Int32>(
+        stage_select_topic, 10,
+        [this](std_msgs::msg::Int32::ConstSharedPtr message) {
+          handle_stage_select(message->data);
         });
     odometry_sub_ = create_subscription<nav_msgs::msg::Odometry>(
         odometry_topic, rclcpp::SensorDataQoS(),
@@ -213,6 +220,26 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     persist_checkpoint();
     publish_state();
     RCLCPP_INFO(get_logger(), "Advanced to checkpoint stage %d.", current_stage_);
+  }
+
+  void handle_stage_select(int selected_stage) {
+    if (selected_stage < kFirstStage || selected_stage > kLastStage) {
+      RCLCPP_ERROR(
+          get_logger(), "Rejected stage selection %d; valid range is 1..6.", selected_stage);
+      return;
+    }
+    if (state_ != SupervisorState::kDownWaiting && state_ != SupervisorState::kPaused) {
+      RCLCPP_ERROR(
+          get_logger(), "Rejected stage selection %d while state=%s; pause or restart first.",
+          selected_stage, state_name(state_));
+      return;
+    }
+    current_stage_ = selected_stage;
+    persist_checkpoint();
+    publish_state();
+    RCLCPP_WARN(
+        get_logger(), "Operator selected checkpoint stage %d; motion remains inhibited.",
+        current_stage_);
   }
 
   void handle_odometry(const nav_msgs::msg::Odometry &message) {
@@ -464,6 +491,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr safety_reason_pub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr operator_event_sub_;
   rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr stage_complete_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr stage_select_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<protocol::msg::MotionStatus>::SharedPtr motion_status_sub_;
   rclcpp::Subscription<protocol::msg::BmsStatus>::SharedPtr bms_status_sub_;
