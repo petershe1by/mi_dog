@@ -66,7 +66,8 @@
 - 2026-08-12 只读发现 `image=0`、`pose_filtered=0`，但 scan 约 7.98 Hz、`odom_out` 约
   44.55 Hz；手工调用原厂相机服务后 8 秒取得 76 帧 640x480 `bgr8` 图像并成功关闭。
 - 增加相机启动/退出生命周期和 odom 四元数姿态备用输入；ARM64 增量编译通过，隔离节点
-  连续报告 `lidar=1 pose=1` 且测试运动话题样本为零。正式服务部署证据尚待补充。
+  连续报告 `lidar=1 pose=1` 且测试运动话题样本为零。提交 `7e70fca` 正式部署后服务连续
+  报告 `camera=1 lidar=1 pose=1; no motion output`，完整只读安全审计通过。
 
 ## 真机部署状态
 
@@ -86,6 +87,11 @@
   SHA256 为 `76c00b474f706f9f37a891b0dec2d3b6bb3d622e067f1c4c27bdc0482d9c2bcc`；实效值包含
   `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、`run_allowed=false`、
   `emergency_stop=true` 和 `input_missing`。
+- 当前相机/odom 只读部署清单：`deployment_manifest_20260812T162605+0800.txt`，
+  `source_commit=7e70fca`，SHA256 为
+  `e65796f9b9aa2e178be22a522e231af98fcf61625f32e94484d2f2273ec9547e`；实效安全状态保持
+  `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、`run_allowed=false`、
+  急停 true 和 `input_missing`。
 
 ## 当前阻塞项
 

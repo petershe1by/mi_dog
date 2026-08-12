@@ -1,6 +1,6 @@
 # 真机测试数据汇总
 
-更新日期：2026-08-10。单位默认使用 SI。这里汇总当前对话和仓库中保留下来的全部有效数据；
+更新日期：2026-08-12。单位默认使用 SI。这里汇总当前对话和仓库中保留下来的全部有效数据；
 没有保存原始 rosbag/CSV 的项目会标明证据等级，不能用于高精度控制器标定。
 
 ## 证据等级
@@ -22,7 +22,7 @@
 | 协议包 | `protocol 1.0.0` | A |
 | 主控剩余空间 | 初始约 2.7 MB；清理 pip 下载缓存后约 336 MB；安装后约 332 MB | B |
 | 真机工作区 | `/home/mi/mi_dog_ws`，安装占用约 7 MB | B |
-| 最后代码基线 | `c19ef2b` | A |
+| 最后代码基线 | `7e70fca` | A |
 | 最近一次记录电量 | 100%（未保存连续放电曲线） | B |
 
 2026-08-10 13:55 的最终有效部署清单：
@@ -41,6 +41,17 @@
 同一清单记录 `service=active`、`enable_motion=False`、supervisor `DOWN_WAITING`、
 `run_allowed=false`。两份配置哈希与仓库一致。
 
+2026-08-12 相机生命周期和 odom 姿态备用部署清单：
+
+- 文件：`deployment_manifest_20260812T162605+0800.txt`
+- `source_commit=7e70fca`
+- 清单 SHA256：`e65796f9b9aa2e178be22a522e231af98fcf61625f32e94484d2f2273ec9547e`
+- `mi_dog_real_node` SHA256：`1f4eb26fc94582c03bef1e7c355db0dc27d08eaade5e84db530fcd24aea8e82b`
+- `this_robot_sensor_only.yaml` SHA256：`8f414da71a1de0f9b9c8db67e60caaa1e1d830bb26afe7ede98f4d40dea36bd6`
+- `run_sensor_gate.sh` SHA256：`069d501ccba370e594f62afd5f14b2da870892335807f155001bafcb5d69e75f`
+- 实效状态：服务 active、四节点单实例、`enable_motion=False`、`manage_dialogue=False`、
+  `DOWN_WAITING`、`run_allowed=false`、急停 true、`input_missing`、HID 未运行。
+
 ## 数据频率和安全参数
 
 | 数据/参数 | 数值 | 来源/等级 |
@@ -50,6 +61,9 @@
 | `/scan` 复测 | 48/6.02 s，约 7.98 Hz | 2026-08-12 SensorDataQoS 只读计数，B |
 | `/image` 默认状态 | 0/6.02 s，无发布者 | 2026-08-12 只读计数和 topic info，B |
 | `/image` 手工启用 | 76/8.03 s，约 9.46 Hz，640x480 `bgr8` | 原厂 camera service command 9，随后 command 10 关闭，B |
+| 正式服务重启后 `/image` | 49/6.02 s，约 8.14 Hz | `7e70fca` 部署后只读计数，B |
+| 正式服务重启后 `/scan` | 40/6.02 s，约 6.65 Hz | `7e70fca` 部署后只读计数，B |
+| 正式服务重启后 `/odom_out` | 221/6.02 s，约 36.73 Hz | `7e70fca` 部署后只读计数，B |
 | `/pose_filtered`、`dog_pose`、`tracking_pose_transformed` | 均 0/6.02 s | 2026-08-12 只读计数，B |
 | BMS | 约 1 Hz | 现场观察，B |
 | `contactEstimate[4]` | 约 50 Hz | LCM 桥，B |
@@ -74,9 +88,10 @@
 
 以上运动参数存在于代码，但当前正式配置 `enable_motion=false`，不代表非零运动已经批准。
 
-2026-08-12 odom 姿态备用输入候选在 ARM64 增量编译通过。隔离节点使用真实 `/scan` 和
+2026-08-12 odom 姿态备用输入在 ARM64 增量编译通过。隔离节点使用真实 `/scan` 和
 `/odom_out`，在相机关闭条件下连续报告 `camera=0 lidar=1 pose=1`；隔离运动输出话题 9 秒
-收到 0 帧。测试未连接真实 `motion_servo_cmd`，不构成非零运动验收。
+收到 0 帧。正式无运动服务随后连续报告 `camera=1 lidar=1 pose=1; no motion output`。
+这些测试不构成非零运动验收。
 
 ## 足端与姿态动作
 

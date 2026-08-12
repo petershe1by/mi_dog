@@ -215,7 +215,13 @@
 - 机器狗工作区构建前创建五文件 SHA256 备份。备份根目录中的 `CMakeLists.txt` 首次被 colcon
   识别为重复包，未开始编译；重命名为 `.backup` 后 ARM64 增量编译 1 分 53 秒通过。
 - 隔离节点使用测试运动话题，连续报告 `camera=0 lidar=1 pose=1`；9 秒运动消息样本为 0，
-  `ODOM_ADAPTER_ISOLATED_TEST=PASS`。正式服务尚未重启，机器狗未移动。
+  `ODOM_ADAPTER_ISOLATED_TEST=PASS`。
+- 提交 `7e70fca` 后重启正式无运动服务。相机服务自动启用 640x480、10 fps；节点稳定报告
+  `camera=1 lidar=1 pose=1; no motion output`。六秒复测得到 image 49 帧、scan 40 帧、
+  odom 221 帧；完整只读审计为 `READ_ONLY_AUDIT=PASS`，机器狗未移动。
+- 新部署清单 `deployment_manifest_20260812T162605+0800.txt` 绑定 `7e70fca`，SHA256 为
+  `e65796f9b9aa2e178be22a522e231af98fcf61625f32e94484d2f2273ec9547e`；状态为四节点单实例、
+  `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、急停 true、`input_missing`。
 - 用户确认正式架构允许无网线、无 Wi-Fi、狗内置主控独立运行；场地可能存在网络，但程序
   不依赖。三个 Type-C 暂按铁蛋一接口定义参考，CyberDog 2 三口映射仍作为实体接线前置项。
 
