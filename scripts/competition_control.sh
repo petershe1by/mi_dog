@@ -64,12 +64,15 @@ fi
 
 if [[ "$action" == restart ]]; then
   ssh -tt "${ssh_options[@]}" "$target" \
-    'sudo systemctl restart mi-dog-real-sensor.service &&
+    'supervisor_pattern="^/home/mi/mi_dog_ws/install/mi_dog_real/lib/mi_dog_real/mi_dog_supervisor_node "
+     old_supervisor="$(pgrep -f "$supervisor_pattern" | head -n 1 || true)"
+     sudo systemctl restart mi-dog-real-sensor.service &&
      for attempt in $(seq 1 90); do
+       new_supervisor="$(pgrep -f "$supervisor_pattern" | head -n 1 || true)"
        if [ "$(systemctl is-active mi-dog-real-sensor.service 2>/dev/null)" = active ] &&
-          pgrep -f "/mi_dog_supervisor_node --ros-args" >/dev/null; then
+          [ -n "$new_supervisor" ] && [ "$new_supervisor" != "$old_supervisor" ]; then
          echo service_active=active
-         echo supervisor_ready=process_present
+         echo supervisor_ready=new_process
          echo supervisor_restart_policy=DOWN_WAITING
          exit 0
        fi

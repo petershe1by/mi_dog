@@ -247,6 +247,12 @@
   为避免比赛中服务重启反复停启原厂相机，启动脚本改为优先复用已有 `/image`，不再在本服务
   退出时关闭相机；只有图像未激活时才请求一次 command 9，并在响应超时后复查实际图像。
   当前相机服务已卡住，正向恢复需下次整机安全重启后验证，不重启原厂 `cyberdog_bringup`。
+- `competition_control.sh restart` 最初只检查 service active，随后发现会在 supervisor 尚未创建时
+  过早返回；又修正了 `pgrep` 自匹配问题。最终版本记录重启前 supervisor PID，并等待新的、
+  路径锚定的 supervisor 进程，现场约 30 秒后报告 `supervisor_ready=new_process`。
+- 最终状态复测：`service_active=active`、`DOWN_WAITING`、赛段 1、`run_allowed=false`、
+  `wired_charging_motion_inhibited`。机器狗正在充电，因此 START 的拒绝是预期安全结果；未产生
+  运动输出。当前相机仍需整机安全重启恢复，雷达和 odom 继续可用。
 
 ## 如何继续记录
 
