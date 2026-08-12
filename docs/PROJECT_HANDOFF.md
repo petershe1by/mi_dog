@@ -31,6 +31,10 @@
 `manage_dialogue=false`、`enable_motion=false`，supervisor 为 `DOWN_WAITING`，急停为
 `input_missing`；没有比赛运动输出。原厂高阻尼趴下动作返回完成后，用户现场确认机器狗已稳定趴下。
 
+2026-08-12 电脑重启流程复验后，正式服务仍 active、`DOWN_WAITING/run_allowed=false`，雷达和
+odom 正常，但原厂相机在 command 10 后的 command 9 调用卡住，当前 `/image` 无输出。不要为此
+单独重启原厂 `cyberdog_bringup`；已改为跨本服务重启保留已有图像，待下次整机安全重启复验。
+
 ## 已做的工作
 
 ### 仿真

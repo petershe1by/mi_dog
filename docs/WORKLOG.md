@@ -242,9 +242,11 @@
   `status=DOWN_WAITING/stage=1/run_allowed=false`；`START` 已送达但因
   `wired_charging_motion_inhibited` 被 fail-closed 拒绝；`PAUSE` 得到 `PAUSED/false`；重启后
   恢复 `DOWN_WAITING/false`，全程无运动输出。
-- 本次重启暴露相机启动竞态：旧服务退出耗尽 20 秒停止超时，新服务第一次相机请求失败，
-  但雷达和 odom 继续工作且运动闭锁。启动脚本改为相机停止幂等、缩短停止调用并对启动请求
-  最多重试三次；该修复需部署后再次重启验证。
+- 本次重启暴露原厂相机服务生命周期问题：command 10 后，后续 command 9 可发现服务并创建
+  RealSense 进程，但服务调用不返回且 `/image` 不再输出；雷达和 odom 继续工作且运动闭锁。
+  为避免比赛中服务重启反复停启原厂相机，启动脚本改为优先复用已有 `/image`，不再在本服务
+  退出时关闭相机；只有图像未激活时才请求一次 command 9，并在响应超时后复查实际图像。
+  当前相机服务已卡住，正向恢复需下次整机安全重启后验证，不重启原厂 `cyberdog_bringup`。
 
 ## 如何继续记录
 

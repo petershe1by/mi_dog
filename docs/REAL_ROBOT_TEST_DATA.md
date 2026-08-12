@@ -64,6 +64,11 @@
 | 正式服务重启后 `/image` | 49/6.02 s，约 8.14 Hz | `7e70fca` 部署后只读计数，B |
 | 正式服务重启后 `/scan` | 40/6.02 s，约 6.65 Hz | `7e70fca` 部署后只读计数，B |
 | 正式服务重启后 `/odom_out` | 221/6.02 s，约 36.73 Hz | `7e70fca` 部署后只读计数，B |
+
+2026-08-12 电脑重启流程测试发现：command 10 后再次调用 command 9 时，服务仍可发现并创建
+RealSense 进程，但客户端等待响应超时，`/image` 无发布；正式节点持续报告
+`camera=0 lidar=1 pose=1; no motion output`。这不撤销此前相机链的正向测量，但说明原厂相机
+不适合随本服务反复停启。当前恢复项是下次整机安全重启后验证“图像保留跨服务重启”策略。
 | `/pose_filtered`、`dog_pose`、`tracking_pose_transformed` | 均 0/6.02 s | 2026-08-12 只读计数，B |
 | BMS | 约 1 Hz | 现场观察，B |
 | `contactEstimate[4]` | 约 50 Hz | LCM 桥，B |

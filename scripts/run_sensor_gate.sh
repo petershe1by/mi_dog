@@ -14,35 +14,27 @@ export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
 mkdir -p /home/mi/mi_dog_ws/state
 
 camera_service=/mi_desktop_48_b0_2d_7a_fe_40/camera_service
-camera_started=false
-
-stop_camera() {
-  if [[ "$camera_started" == true ]]; then
-    # Clear first so INT followed by EXIT cannot execute the stop call twice.
-    camera_started=false
-    timeout 10s ros2 service call "$camera_service" protocol/srv/CameraService \
-      "{command: 10, args: '', width: 0, height: 0, fps: 0}" >/dev/null 2>&1 || true
-  fi
-}
-trap stop_camera EXIT INT TERM
-
-camera_response=""
-for camera_attempt in 1 2 3; do
+camera_active=false
+if timeout 4s ros2 topic echo /image --once >/dev/null 2>&1; then
+  camera_active=true
+  echo "Camera stream was already active; preserving it across service restart."
+else
   camera_response="$(
-    timeout 12s ros2 service call "$camera_service" protocol/srv/CameraService \
+    timeout 20s ros2 service call "$camera_service" protocol/srv/CameraService \
       "{command: 9, args: '', width: 640, height: 480, fps: 10}" 2>&1 || true
   )"
   if grep -q 'result=0' <<< "$camera_response"; then
-    camera_started=true
-    echo "Camera stream enabled at 640x480, 10 fps (attempt $camera_attempt)."
-    break
+    camera_active=true
+    echo "Camera stream enabled at 640x480, 10 fps."
+  elif timeout 4s ros2 topic echo /image --once >/dev/null 2>&1; then
+    camera_active=true
+    echo "Camera stream became active even though the service response timed out."
   fi
-  [[ "$camera_attempt" -eq 3 ]] || sleep 2
-done
+fi
 
-if [[ "$camera_started" != true ]]; then
+if [[ "$camera_active" != true ]]; then
   echo "Camera stream was not enabled; sensor-only service continues fail-closed." >&2
-  echo "$camera_response" >&2
+  echo "${camera_response:-camera topic inactive}" >&2
 fi
 
 ros2 launch mi_dog_real sensor_only.launch.py
