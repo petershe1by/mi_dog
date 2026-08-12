@@ -18,20 +18,29 @@ camera_started=false
 
 stop_camera() {
   if [[ "$camera_started" == true ]]; then
-    timeout 12s ros2 service call "$camera_service" protocol/srv/CameraService \
+    # Clear first so INT followed by EXIT cannot execute the stop call twice.
+    camera_started=false
+    timeout 10s ros2 service call "$camera_service" protocol/srv/CameraService \
       "{command: 10, args: '', width: 0, height: 0, fps: 0}" >/dev/null 2>&1 || true
   fi
 }
 trap stop_camera EXIT INT TERM
 
-camera_response="$(
-  timeout 20s ros2 service call "$camera_service" protocol/srv/CameraService \
-    "{command: 9, args: '', width: 640, height: 480, fps: 10}" 2>&1 || true
-)"
-if grep -q 'result=0' <<< "$camera_response"; then
-  camera_started=true
-  echo "Camera stream enabled at 640x480, 10 fps."
-else
+camera_response=""
+for camera_attempt in 1 2 3; do
+  camera_response="$(
+    timeout 12s ros2 service call "$camera_service" protocol/srv/CameraService \
+      "{command: 9, args: '', width: 640, height: 480, fps: 10}" 2>&1 || true
+  )"
+  if grep -q 'result=0' <<< "$camera_response"; then
+    camera_started=true
+    echo "Camera stream enabled at 640x480, 10 fps (attempt $camera_attempt)."
+    break
+  fi
+  [[ "$camera_attempt" -eq 3 ]] || sleep 2
+done
+
+if [[ "$camera_started" != true ]]; then
   echo "Camera stream was not enabled; sensor-only service continues fail-closed." >&2
   echo "$camera_response" >&2
 fi

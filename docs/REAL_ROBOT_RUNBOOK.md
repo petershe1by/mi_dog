@@ -1,6 +1,6 @@
 # CyberDog 2 真机操作手册
 
-适用范围：当前默认无运动的传感器、语音、触摸和 supervisor 服务。
+适用范围：当前默认无运动的传感器、电脑操作和 supervisor 服务。
 
 当前禁止：设置 `enable_motion=true`、充电时执行姿态动作、直接运行整场自治。
 
@@ -24,26 +24,18 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
   --qos-durability transient_local --qos-reliability reliable
 ```
 
-软件守卫不能代替实体按钮。接入并完成断线、按钮保持、释放重置和停止延迟验收前，仍禁止
-非零运动。
+赛事已确认不要求额外实体急停。该守卫保留为兼容/诊断代码，不再是比赛前置条件；非零运动
+前仍必须验证电脑暂停、服务重启、命令 watchdog 和许可撤销均能停止输出。
 
-### 外部接口限制（重要更正）
+### 外部 Type-C 定义
 
-机器狗外部只有一个已验证网口和三个 Type-C。现有比赛 PDF/DOCX 没有说明三个 Type-C
-分别是充电、USB Device、USB Host 还是调试口。主控 `lsusb` 显示内部 Hub 和 RealSense，
-只证明内部 USB 总线存在，不能证明任一外部 Type-C 能接 HID。
-
-因此：不要把 USB 急停、U 盘、扩展坞或任意 Type-C 转接器插到狗上试口；不要按物理位置
-猜测。`estop_hid_input.py` 只保留为软件原型，正式 `sensor_only.launch.py` 不启动它。
-当前守卫因 `/mi_dog_real/emergency_stop_input` 无生产者而持续输出 true。
-
-比赛方案必须先取得赛事方/小米提供的三个 Type-C 角色和允许设备清单，或采用赛事方明确
-认可的本体/官方停止装置。电脑侧按钮经网线发心跳只可用于家中调试，不符合单狗离线比赛
-架构，不能作为正式方案。
+用户已确认三个 Type-C 分别为 `UDisk`、`charge`、`download`，定义参考铁蛋一。实际物理
+位置必须按机身标识，不按左右顺序猜测：U 盘只接 UDisk，充电器只接 charge，官方调试线只
+接 download。`estop_hid_input.py` 只保留为历史软件原型，正式服务不启动它。
 
 ## 现场角色与环境
 
-- 一人负责电脑和口令，一人靠近独立急停；未完成独立急停验收前不做非零运动。
+- 一人负责电脑启动/暂停/重启，一人观察机器狗和场地；非零运动前先演练暂停与重启。
 - 地面平整、防滑；狗前后左右至少留出安全空间。
 - 不在桥边、台阶边、桌边或人群附近开机测试。
 - 运动或姿态测试前必须拔掉充电线；充电时只允许只读诊断。
@@ -116,9 +108,26 @@ ros2 param get /mi_dog_real enable_motion
 
 预期为 `False`。不是 `False` 时立即停止服务并调查，不继续测试。
 
+## 电脑比赛控制
+
+比赛允许电脑用于开始、中途暂停和重启。推荐入口：
+
+```bash
+./scripts/competition_control.sh status
+./scripts/competition_control.sh start
+./scripts/competition_control.sh pause
+./scripts/competition_control.sh continue
+./scripts/competition_control.sh restart
+```
+
+脚本只发布 supervisor 白名单事件或重启服务，不接受方向、速度、步态和姿态参数。密码在
+SSH/sudo 提示中交互输入，不存储。`pause` 应返回 `PAUSED/run_allowed=false`；`restart` 后应
+返回 active，并按设计进入 `DOWN_WAITING`。
+
 ## 单狗离线比赛模式
 
-正式比赛不插网线、不使用电脑作为算力节点。`mi-dog-real-sensor.service` 安装在狗上并随
+正式比赛不使用电脑作为算力节点。可按现场需要使用直连网线发送上述结构化操作，也可拔除
+网线让狗独立运行。`mi-dog-real-sensor.service` 安装在狗上并随
 `multi-user.target` 自启；unit 只等待 `network.target`，不等待外部网络在线。CycloneDDS
 配置 `/etc/mi/cyclonedds.xml` 固定使用 `lo` 和 `localhost`，本机 ROS 2 通信不依赖 eth0。
 
@@ -132,7 +141,7 @@ ros2 param get /mi_dog_real enable_motion
 离线提示音仍工作，证明基础链不依赖外网。但打开 `continue_dialog` 会同时启用原厂动作
 路由，现场发生原厂恢复站立。因此该结果不是语音控制验收，且不证明真机赛段控制器。
 
-## 语音操作
+## 语音操作（非比赛要求）
 
 > **当前禁止用于姿态或比赛控制。** 正式配置为 `manage_dialogue=false`。2026-08-10 实测中，
 > 本程序拒绝了白名单外的 `站起来`，原厂助手仍执行了 `motion_id=111`。在自定义 ASR 与
@@ -166,10 +175,11 @@ ros2 param get /mi_dog_real enable_motion
 
 当前软件暂停会撤销 `run_allowed` 和速度许可，但自动安全趴下尚未连接。
 
-- 普通暂停：说“暂停”或头部双击，确认状态变为 `PAUSED`、许可为 false。
-- 恢复：先确认环境安全，再说“铁蛋铁蛋—恢复”；不安全时系统应拒绝。
-- 严重故障：说“终止”只能作为软件停止；真实运动测试必须使用独立急停。
-- 重启：服务读取赛段编号，但强制回到 `DOWN_WAITING`，不会自动继续。
+- 普通暂停：电脑执行 `competition_control.sh pause`，确认 `PAUSED/run_allowed=false`。
+- 恢复：先确认环境安全和裁判许可，再执行 `competition_control.sh continue`。
+- 锁存停止：执行 `competition_control.sh stop`；它不接受人工运动参数。
+- 重启：执行 `competition_control.sh restart`。服务读取赛段编号，但强制回到
+  `DOWN_WAITING`，不会自动继续。
 
 ## 只读传感器采集
 

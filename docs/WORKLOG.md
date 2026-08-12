@@ -223,11 +223,28 @@
   `e65796f9b9aa2e178be22a522e231af98fcf61625f32e94484d2f2273ec9547e`；状态为四节点单实例、
   `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、急停 true、`input_missing`。
 - 用户确认正式架构允许无网线、无 Wi-Fi、狗内置主控独立运行；场地可能存在网络，但程序
-  不依赖。三个 Type-C 暂按铁蛋一接口定义参考，CyberDog 2 三口映射仍作为实体接线前置项。
+  不依赖。
 - 按铁蛋一思路完成无插接只读盘点：Tegra 内核报告 USB2 port 0 `OTG_CAP`，存在
   `3550000.xudc`，configfs 配置 NCM/RNDIS/ACM/mass-storage gadget；当前 USB/USB_HOST 状态
   均为 0，`usb0` 无 carrier。该证据只能确认 OTG/device 能力，不能把它映射到三个外部口，
   因此没有恢复 HID 正式服务或尝试插接。
+
+### 同日后续：赛事操作边界与三个 Type-C 定义冻结
+
+- 用户确认三个 Type-C 分别为 `UDisk`、`charge`、`download`，参考铁蛋一并以机身标识为准。
+- 用户确认比赛开始、中途暂停和重启可以使用电脑；电脑不作为比赛算力节点，程序仍须在
+  无网线、无 Wi-Fi 时由狗内置主控独立运行。
+- 用户确认不需要额外实体急停或语音控制。旧急停守卫/HID 和语音入口保留为闭锁的兼容实现，
+  不再列为赛事前置条件；软件暂停、重启撤权、watchdog 和链路中断停止仍是运动前验收项。
+- 新增 `scripts/competition_control.sh`：只允许 `status/start/continue/pause/stop/restart`，通过
+  狗本机 ROS 2 发布结构化事件或重启服务，不提供方向、速度、步态、姿态和原始运控参数。
+- 正式服务保持 `enable_motion=False`、`manage_dialogue=False` 时完成电脑控制基础复验：初始
+  `status=DOWN_WAITING/stage=1/run_allowed=false`；`START` 已送达但因
+  `wired_charging_motion_inhibited` 被 fail-closed 拒绝；`PAUSE` 得到 `PAUSED/false`；重启后
+  恢复 `DOWN_WAITING/false`，全程无运动输出。
+- 本次重启暴露相机启动竞态：旧服务退出耗尽 20 秒停止超时，新服务第一次相机请求失败，
+  但雷达和 odom 继续工作且运动闭锁。启动脚本改为相机停止幂等、缩短停止调用并对启动请求
+  最多重试三次；该修复需部署后再次重启验证。
 
 ## 如何继续记录
 

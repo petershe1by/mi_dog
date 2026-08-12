@@ -14,7 +14,7 @@
 ## 真机数据流
 
 ```text
-ASR / 头部双击
+电脑 SSH 结构化事件 / 可选头部双击
       │
       v
 mi_dog_real_node ──operator_event──> mi_dog_supervisor_node
@@ -22,7 +22,7 @@ mi_dog_real_node ──operator_event──> mi_dog_supervisor_node
       │                                  ├─ state/current_stage/checkpoint
       │                                  └─ run_allowed (实时且 fail-closed)
       │                                              │
-未来已确认的实体输入 ──> mi_dog_estop_guard_node ── emergency_stop ──┤
+可选兼容急停输入 ─────> mi_dog_estop_guard_node ── emergency_stop ──┤
 safe_cmd_vel ────────────────────────────────────────────────┤
       │                                              v
       └──────── 最终运动适配门 <── 传感器/急停 ── motion_servo_cmd
@@ -85,6 +85,7 @@ safe_cmd_vel ──────────────────────�
 | `scripts/run_race.sh` | 删除旧容器并执行正式冷启动回归 |
 | `scripts/smoke_test.sh` | 检查仿真基础设施，不替代全程验收 |
 | `scripts/start_sim.sh` | 容器内启动 Gazebo、控制器和自治节点 |
+| `scripts/competition_control.sh` | 电脑端比赛操作入口；只发送白名单事件或重启服务，不发送运动命令 |
 | `scripts/run_sensor_gate.sh` | 真机 ROS 环境和 CycloneDDS 环境设置 |
 | `scripts/capture_deployment_manifest.sh` | 拒绝重复节点并记录真机进程、参数和 SHA256 |
 | `systemd/mi-dog-real-sensor.service` | 真机开机自启的无运动服务单元 |
@@ -93,7 +94,7 @@ safe_cmd_vel ──────────────────────�
 
 | 话题 | 类型 | 生产者 | 用途/时限 |
 | --- | --- | --- | --- |
-| `/mi_dog_real/operator_event` | `std_msgs/String` | `mi_dog_real_node` | `START/CONTINUE/PAUSE/PAUSE_TOUCH/STOP` |
+| `/mi_dog_real/operator_event` | `std_msgs/String` | 电脑控制脚本或 `mi_dog_real_node` | `START/CONTINUE/PAUSE/PAUSE_TOUCH/STOP` |
 | `/mi_dog_real/supervisor/state` | `std_msgs/String` | supervisor | 持久化比赛状态 |
 | `/mi_dog_real/supervisor/current_stage` | `std_msgs/Int32` | supervisor | 当前赛段 1..6 |
 | `/mi_dog_real/supervisor/run_allowed` | `std_msgs/Bool` | supervisor | 最终运动许可，运动节点要求 0.5 秒内新鲜 |
@@ -103,7 +104,7 @@ safe_cmd_vel ──────────────────────�
 | `/mi_dog_real/proximity_summary` | `Float32MultiArray` | 状态桥 | 超声、头左/右、后左/右，单位米 |
 | `/mi_dog_real/head_ground_roi_summary` | `Float32MultiArray` | 状态桥 | 左右 p25/中值/有效比例，只读诊断 |
 | `/mi_dog_real/safe_cmd_vel` | `geometry_msgs/Twist` | 未来高层控制器 | 300 ms 超时；当前无正式生产者 |
-| `/mi_dog_real/emergency_stop_input` | `std_msgs/Bool` | 未来已确认的实体接口 | 当前无生产者；守卫因此保持急停 true |
+| `/mi_dog_real/emergency_stop_input` | `std_msgs/Bool` | 可选兼容实体接口 | 赛事不要求；当前无生产者，守卫保持急停 true |
 | `/mi_dog_real/emergency_stop_hid/status` | `std_msgs/String` | 可选 HID 原型 | 正式服务不启动，不能据此选择狗的 Type-C 口 |
 | `/mi_dog_real/emergency_stop` | `std_msgs/Bool` | 急停守卫 | 20 Hz；启动、断线、超时或按下均为 `true` |
 | `/mi_dog_real/emergency_stop_guard/status` | `std_msgs/String` | 急停守卫 | `input_missing/input_stale/pressed/released_armed` 等诊断 |

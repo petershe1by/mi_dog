@@ -15,9 +15,8 @@
   `/mi_dog_real/emergency_stop_input` 转为上述心跳：启动、输入缺失或超过 0.25 秒均持续发布
   `true`。首次 `false` 不会解锁，必须先观察一次按下 `true` 再释放 `false`；断线恢复后也
   必须重复按下—释放周期。
-- `estop_hid_input.py` 是 USB HID 常闭输入原型，FIFO 逻辑测试已通过，但机器狗三个外部
-  Type-C 的 Host/Device 角色没有文档依据。内部 `lsusb` 不能证明外部端口可接 HID，因此
-  正式开机服务不启动该原型，也不得据此插接任一 Type-C。
+- `estop_hid_input.py` 是历史 USB HID 常闭输入原型，正式开机服务不启动。赛事已确认不要求
+  额外实体急停；三个外部 Type-C 定义为 `UDisk`、`charge`、`download`，插接按机身标识。
 - 默认还要求 supervisor 的 `/mi_dog_real/supervisor/run_allowed` 持续为真；许可缺失、为假或
   超过 0.5 秒未刷新都会发送停止心跳，不能仅凭语音门或速度输入绕过 supervisor。
 - 拒绝 NaN/Inf 指令；IMU 四元数归一化后执行横滚/俯仰门控，雷达使用前向扇区有效样本做减速和停车。
@@ -25,7 +24,12 @@
 - 使用官方慢速步态 `motion_id=303`、真机 ABI 定义的视觉来源 `cmd_source=2`；限幅为前后 0.25 m/s、横移 0.10 m/s、转向 0.40 rad/s。步高采用 0.05 m。
 - 不设置步长、机身高度或自定义跳跃高度：这些并非当前公开的稳定真机接口。跳跃只能待现场确认后调用官方预置动作。
 
-## 比赛语音门控
+## 比赛操作与可选语音门控
+
+正式比赛允许电脑执行开始、中途暂停和重启，不需要语音控制。电脑端统一使用
+`scripts/competition_control.sh`，它只发布白名单 `operator_event` 或重启服务，不提供方向、
+速度、步态、姿态和原始运控参数。以下语音实现只保留为历史/可选入口，正式配置继续固定
+`manage_dialogue=false`。
 
 - 设置 `require_voice_start=true` 后，节点启动并不等于允许运动；必须先收到精确的
   配置口令，并同时满足传感器与急停心跳检查。本机真人实测口令为
@@ -196,7 +200,9 @@ ros2 run mi_dog_real ground_tof_capture.py --samples 20 --timeout 15
 
 ## 首次接入（只读探测）
 
-先由赛事方确认 CyberDog 2 的 Type-C 数据模式、官方 USB-C 网卡/转接方案、IP 和登录权限。不要按 CyberDog 1 的 `192.168.55.*` 教程操作，也不要在未确认网络前运行竞赛镜像中的 `scp_to_cyberdog.sh`。
+三个 Type-C 已确认为 `UDisk`、`charge`、`download`；连接时按机身标识使用对应官方线材，
+不要按 CyberDog 1 的 `192.168.55.*` 教程猜测地址。当前已验证的电脑直连主控地址为
+`192.168.44.1`。
 
 在机器人官方 `cyberdog_ws`/ROS 2 环境中建立独立工作区后构建：
 
@@ -217,14 +223,18 @@ ros2 run mi_dog_real mi_dog_real_node --ros-args --params-file \
 
 ## 受控运动（当前锁定）
 
-不得在当前版本设置下列值。只有先完成零速度 `SERVO_START/DATA/END` 时序验证、独立急停验证并由现场负责人批准后，才可进入下一阶段：
+不得在当前版本设置下列值。只有先完成零速度 `SERVO_START/DATA/END` 时序，以及电脑暂停、
+服务重启、许可撤销、命令 watchdog 和链路中断停止验证，并由现场负责人批准后，才可进入
+下一阶段：
 
 ```text
 enable_motion:=true
 arm_token:=I_UNDERSTAND_REAL_ROBOT_RISK
 ```
 
-然后必须由独立急停节点持续向 `/mi_dog_real/emergency_stop` 发布 `false` 心跳，再由高层算法向 `/mi_dog_real/safe_cmd_vel` 发布 `geometry_msgs/Twist`。本包会限幅并将其转换为官方 `protocol/msg/MotionServoCmd`。第一轮只测试急停心跳、零速度、极低速直行和停止 watchdog；不运行赛道自治或跳跃。
+当前通用模板仍保留急停心跳门，正式赛事运动配置应另行冻结：赛事不要求额外实体急停，
+但不得直接修改现有模板绕过门控。第一轮只测试零速度、电脑暂停/重启、许可撤销和停止
+watchdog；不运行赛道自治、极低速直行或跳跃。
 
 > 当前包已在这台 CyberDog 2 的 ARM64/ROS 2 Galactic 环境编译并以传感器模式运行；
 > 非零运动模式的命令时序和安全链仍未完成验收，因此不得设置 `enable_motion=true`。

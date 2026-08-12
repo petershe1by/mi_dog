@@ -103,9 +103,9 @@
 - `extcon0` 同时报 `USB=0`、`USB_HOST=0`；`usb0` 为 NO-CARRIER 并挂在 `l4tbr0`。
 - xHCI host 总线及内部 USB2/USB3 Hub、RealSense 可见，但仍不能证明哪个外部 Type-C 是 Host。
 
-结论：真机至少具备一个 OTG/device 控制器，和铁蛋一的 download/device 思路相符；现有软件
-证据不能把该控制器或 host 总线逐一映射到 CyberDog 2 的三个外部 Type-C，因此实体急停接线
-仍未解锁。
+结论：真机至少具备一个 OTG/device 控制器，和铁蛋一的 download/device 思路相符。随后用户
+于 2026-08-12 明确三个外部 Type-C 定义为 `UDisk`、`charge`、`download`；该现场定义取代
+此前“角色未确认”的工程假设。物理插接仍以机身标识为准，本轮未插接或切换端口角色。
 
 ## 足端与姿态动作
 

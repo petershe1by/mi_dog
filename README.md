@@ -12,7 +12,7 @@
 - [`docs/ARCHITECTURE_AND_FILE_MAP.md`](docs/ARCHITECTURE_AND_FILE_MAP.md)：架构、接口和文件位置。
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：下一步与最终完成条件。
 
-当前边界：Gazebo 六赛段已完成；真机只读接入、语音/触摸和 supervisor 安全门已完成基础
+当前边界：Gazebo 六赛段已完成；真机只读接入、电脑操作和 supervisor 安全门已完成基础
 验收，但真机六赛段感知与控制尚未实现。正式真机配置保持 `enable_motion=false`。
 
 ## 比赛资料
@@ -34,7 +34,8 @@
 
 - `mi_dog_real/`：面向 CyberDog 2 官方 ROS 2 工作区的传感器与安全运动适配包；默认只读相机、雷达和 IMU，默认不发布运动。
 - 真机包使用官方 `motion_servo_cmd` 的慢速步态接口，并将步高限定为开发者手册明确开放的 `0.05 m`；没有修改步长、机身高度或跳跃高度。
-- 真机接入、Type-C 数据网络和实际 topic 映射必须先经赛事方确认。具体安全流程见 [`mi_dog_real/README.md`](mi_dog_real/README.md)。
+- 三个 Type-C 已确认为 `UDisk`、`charge`、`download`；比赛程序运行在狗内置主控，不依赖
+  网线或 Wi-Fi。电脑仅用于开始、暂停和重启。具体流程见 [`mi_dog_real/README.md`](mi_dog_real/README.md)。
 
 ## 构建与运行
 
@@ -60,4 +61,4 @@ docker logs -f mi-dog-race
 - DONE 后持续稳定在 `(2.324,13.092,z=0.054)`，不再发送行走或恢复指令。
 - `smoke_test.sh`、全部 shell 脚本 `bash -n`、镜像内 `cyberdog_autonomy` 编译及 `git diff --check` 均通过。
 
-本轮还增加了状态新鲜度门控、持续低高度判跌、恢复后的物理站立判定、桥面闭环与落地重试、动态足球路径、边界保持确认、DONE 静默终态等保护。真机安全适配见 [`mi_dog_real/README.md`](mi_dog_real/README.md)；在拿到赛事方确认的 CyberDog 2 消息 ABI、topic、网络和端口前，不应把 x86 仿真镜像或未核验协议直接部署到机器人。
+本轮还增加了状态新鲜度门控、持续低高度判跌、恢复后的物理站立判定、桥面闭环与落地重试、动态足球路径、边界保持确认、DONE 静默终态等保护。真机安全适配见 [`mi_dog_real/README.md`](mi_dog_real/README.md)；在核验 CyberDog 2 消息 ABI、topic 和官方运动协议前，不应把 x86 仿真镜像或未核验协议直接部署到机器人。
