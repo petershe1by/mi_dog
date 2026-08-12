@@ -253,6 +253,10 @@
 - 最终状态复测：`service_active=active`、`DOWN_WAITING`、赛段 1、`run_allowed=false`、
   `wired_charging_motion_inhibited`。机器狗正在充电，因此 START 的拒绝是预期安全结果；未产生
   运动输出。当前相机仍需整机安全重启恢复，雷达和 odom 继续可用。
+- 部署清单 `deployment_manifest_20260812T171314+0800.txt` 绑定 `d7900a7`，SHA256 为
+  `8140aa4817ebe9b9438325003ad2be641e622d28a8b66ca18195373f93f92e4a`。清单确认四节点单实例、
+  `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING/run_allowed=false`，并写入
+  `UDisk,charge,download`、无网络依赖、电脑白名单操作以及不要求额外急停/语音控制。
 
 ## 如何继续记录
 

@@ -102,6 +102,11 @@ odom 正常，但原厂相机在 command 10 后的 command 9 调用卡住，当�
   `e65796f9b9aa2e178be22a522e231af98fcf61625f32e94484d2f2273ec9547e`；实效安全状态保持
   `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、`run_allowed=false`、
   急停 true 和 `input_missing`。
+- 当前电脑控制/重启策略清单：`deployment_manifest_20260812T171314+0800.txt`，
+  `source_commit=d7900a7`，SHA256 为
+  `8140aa4817ebe9b9438325003ad2be641e622d28a8b66ca18195373f93f92e4a`；服务 active、四节点
+  单实例、`enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、
+  `run_allowed=false`，并记录 Type-C、离线、电脑操作及“不要求额外急停/语音”的冻结字段。
 
 ## 当前阻塞项
 
