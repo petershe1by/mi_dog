@@ -15,8 +15,36 @@ mkdir -p /home/mi/mi_dog_ws/state
 
 camera_service=/mi_desktop_48_b0_2d_7a_fe_40/camera_service
 camera_topic=/mi_desktop_48_b0_2d_7a_fe_40/image
+
+camera_frame_available() {
+  timeout 12s python3 - "$camera_topic" <<'PY'
+import sys
+import time
+
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import Image
+
+topic = sys.argv[1]
+frames = []
+rclpy.init()
+node = Node("mi_dog_camera_startup_probe")
+subscription = node.create_subscription(
+    Image, topic, lambda message: frames.append(message), qos_profile_sensor_data)
+deadline = time.monotonic() + 10.0
+while not frames and time.monotonic() < deadline:
+    rclpy.spin_once(node, timeout_sec=0.2)
+node.destroy_subscription(subscription)
+node.destroy_node()
+rclpy.shutdown()
+if not frames:
+    raise SystemExit(1)
+PY
+}
+
 camera_active=false
-if timeout 4s ros2 topic echo "$camera_topic" --once >/dev/null 2>&1; then
+if camera_frame_available; then
   camera_active=true
   echo "Camera stream was already active; preserving it across service restart."
 else
@@ -27,7 +55,7 @@ else
   if grep -q 'result=0' <<< "$camera_response"; then
     camera_active=true
     echo "Camera stream enabled at 640x480, 10 fps."
-  elif timeout 4s ros2 topic echo "$camera_topic" --once >/dev/null 2>&1; then
+  elif camera_frame_available; then
     camera_active=true
     echo "Camera stream became active even though the service response timed out."
   fi

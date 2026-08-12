@@ -51,6 +51,8 @@ if [[ -z "$output" ]]; then
 else
   mkdir -p "$(dirname "$output")"
 fi
+output_tmp="${output}.tmp.$$"
+trap 'rm -f "$output_tmp"' EXIT
 
 files=(
   "$install_root/lib/mi_dog_real/mi_dog_real_node"
@@ -65,7 +67,6 @@ files=(
   "$workspace/scripts/run_sensor_gate.sh"
   "$workspace/scripts/capture_deployment_manifest.sh"
   "/etc/systemd/system/mi-dog-real-sensor.service"
-  "/etc/sudoers.d/mi-dog-competition-ui"
 )
 
 for file in "${files[@]}"; do
@@ -161,6 +162,10 @@ supervisor_state="$(read_topic_once /mi_dog_real/supervisor/state string)"
 run_allowed="$(read_topic_once /mi_dog_real/supervisor/run_allowed bool)"
 emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
 estop_guard_status="$(read_topic_once /mi_dog_real/emergency_stop_guard/status string)"
+competition_ui_restart_sudo="unavailable"
+if sudo -n -l /bin/systemctl restart mi-dog-real-sensor.service >/dev/null 2>&1; then
+  competition_ui_restart_sudo="allowed_exact_unit_restart"
+fi
 
 for value in "$effective_enable_motion" "$effective_require_sensor_ready" \
              "$effective_require_estop_ready" "$effective_require_supervisor_run_allowed" \
@@ -202,11 +207,14 @@ done
   echo "competition_type_c_roles=UDisk,charge,download"
   echo "competition_network_dependency=none"
   echo "competition_computer_actions=START,CONTINUE,PAUSE,STOP,restart"
+  echo "competition_ui_restart_sudo=$competition_ui_restart_sudo"
   echo "estop_hid_connection=not_required_unconfigured"
   echo "sha256_begin"
   sha256sum "${files[@]}"
   echo "sha256_end"
-} > "$output"
+} > "$output_tmp"
 
-chmod 0444 "$output"
+chmod 0444 "$output_tmp"
+mv -f "$output_tmp" "$output"
+trap - EXIT
 echo "$output"
