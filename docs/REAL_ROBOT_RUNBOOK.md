@@ -61,6 +61,19 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
 
 ## 开机与只读检查
 
+若电脑已配置 SSH 公钥，可先在电脑端执行一键只读审计：
+
+```bash
+./scripts/robot_read_only_audit.sh
+```
+
+脚本强制使用密钥认证，不会提示或记录密码；它不发布 ROS 消息、不重启服务、不写入机器狗，
+并要求服务 active、四个正式节点各一个、HID 原型未运行、`enable_motion=False`、
+`manage_dialogue=False`、安全闭锁状态、`run_allowed=false`、急停 true 和 `input_missing`。
+安全闭锁状态包括正常冷启动的 `DOWN_WAITING`、人工暂停后的 `PAUSED` 和锁存停止后的
+`EMERGENCY_STOP`；`RUNNING` 或未知状态会失败。任一条件不符都会以非零状态退出。没有公钥时继续使用下面的人工只读流程，
+密码只在交互式 SSH 提示中输入，不写入命令或脚本。
+
 1. 确认狗趴在平整地面，充电线状态符合本次任务。
 2. 开机，等待系统稳定，再插入网线。
 3. 电脑配置 `192.168.44.100/24`，SSH 登录主控。

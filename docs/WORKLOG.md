@@ -178,6 +178,47 @@
   `manage_dialogue=False`、`enable_motion=False`、急停 true、状态 `DOWN_WAITING`。
 - 用户最终现场确认机器狗已稳定趴下，与 `motion_id=101, progress=100` 的运控反馈一致。
 
+## 2026-08-12：共享副本安全同步与只读审计工具
+
+- 以 `/mnt/e/Competitions during college/mi_dog/solution` 的干净 Git 工作树为权威来源，发现
+  共享目录 `real_robot_deploy` 仍是语音安全回退前的副本，两个 YAML 和 C++ 默认值均为
+  `manage_dialogue=true`。
+- 将 `mi_dog_real_node.cpp`、两份配置和包 README 精确同步到权威版本；复核除缓存目录外
+  `real_robot_deploy/mi_dog_real` 与权威目录已无差异，`enable_motion=false`、
+  `manage_dialogue=false`。
+- 新增电脑端 `scripts/robot_read_only_audit.sh`。脚本只允许 SSH 公钥认证，不发布 ROS 消息、
+  不重启服务、不写机器狗，并检查服务、四节点单实例、HID 未运行、运动/语音闭锁、
+  supervisor 和急停状态。
+- 本地 `bash -n`、远端嵌入脚本语法、帮助和非法参数负向测试通过；机器狗
+  `192.168.44.1` 可达。随后通过交互式 SSH 执行只读审计：服务 enabled/active，四个正式
+  节点各一个，HID 原型为零，`enable_motion=False`、`manage_dialogue=False`、
+  `run_allowed=false`、急停 true、守卫 `input_missing`。
+- 首轮审计只接受 `DOWN_WAITING`，因此对现场 `PAUSED` 报失败。启动日志证明 supervisor 于
+  `15:33:48` 正常进入 `DOWN_WAITING`，随后在 `15:36:30` 和 `15:36:35` 收到两次
+  `PAUSE_TOUCH` 并保持 `PAUSED`；全程持续记录 `no motion output`。脚本据此修正为接受
+  `DOWN_WAITING`、`PAUSED`、`EMERGENCY_STOP` 三种闭锁状态，仍拒绝 `RUNNING` 和未知状态。
+- 新增 `ORGANIZER_CONFIRMATION.md`，记录首次 START、暂停/恢复、实体急停、三个 Type-C、
+  离线架构和恢复规则的正式询问与答复门。
+- 本轮没有构建、部署或移动机器狗；真机部署 commit 未改变。下一步是重跑修正后的只读审计，
+  然后取得官方答复并确定实体急停方案。
+
+### 同日后续：相机与 odom 姿态适配候选
+
+- 修正只读审计对 `PAUSED` 的误报后重跑通过：服务 enabled/active、四节点单实例、HID 为零、
+  运动/语音闭锁、`run_allowed=false`、急停 true、`input_missing` 全部成立。
+- SensorDataQoS 六秒计数：`scan=48`（约 7.98 Hz）、`odom_out=268`（约 44.55 Hz）；
+  `/image`、`pose_filtered`、`dog_pose` 和 `tracking_pose_transformed` 均为零。
+- 原厂相机服务 command 9 返回 `result=0/code=0`；8 秒取得 76 帧 640x480 `bgr8` 图像
+  （约 9.46 Hz），command 10 随后成功关闭相机。
+- 候选启动脚本增加相机启停生命周期；运动节点增加 `/odom_out` 四元数备用输入，避免无样本的
+  `pose_filtered` 永久阻塞姿态新鲜度。无效四元数不会刷新新鲜度或覆盖最近的有效输入。
+- 机器狗工作区构建前创建五文件 SHA256 备份。备份根目录中的 `CMakeLists.txt` 首次被 colcon
+  识别为重复包，未开始编译；重命名为 `.backup` 后 ARM64 增量编译 1 分 53 秒通过。
+- 隔离节点使用测试运动话题，连续报告 `camera=0 lidar=1 pose=1`；9 秒运动消息样本为 0，
+  `ODOM_ADAPTER_ISOLATED_TEST=PASS`。正式服务尚未重启，机器狗未移动。
+- 用户确认正式架构允许无网线、无 Wi-Fi、狗内置主控独立运行；场地可能存在网络，但程序
+  不依赖。三个 Type-C 暂按铁蛋一接口定义参考，CyberDog 2 三口映射仍作为实体接线前置项。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、

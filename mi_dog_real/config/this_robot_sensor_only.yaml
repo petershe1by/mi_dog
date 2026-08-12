@@ -16,6 +16,7 @@
     camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
     lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
     pose_topic: "/mi_desktop_48_b0_2d_7a_fe_40/pose_filtered"
+    odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
     motion_topic: "/mi_desktop_48_b0_2d_7a_fe_40/motion_servo_cmd"
     estop_topic: "/mi_dog_real/emergency_stop"
     command_topic: "/mi_dog_real/safe_cmd_vel"

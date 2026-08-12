@@ -10,6 +10,8 @@
 
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include "protocol/msg/motion_servo_cmd.hpp"
 #include "protocol/msg/touch_status.hpp"
 #include "protocol/srv/audio_text_play.hpp"
@@ -71,6 +73,7 @@ class MiDogRealNode final : public rclcpp::Node {
     const auto camera_topic = declare_parameter<std::string>("camera_topic", "/image");
     const auto lidar_topic = declare_parameter<std::string>("lidar_topic", "/scan");
     const auto pose_topic = declare_parameter<std::string>("pose_topic", "/pose_filtered");
+    const auto odometry_topic = declare_parameter<std::string>("odometry_topic", "/odom_out");
     const auto estop_topic =
         declare_parameter<std::string>("estop_topic", "/mi_dog_real/emergency_stop");
     const auto motion_topic = declare_parameter<std::string>("motion_topic", "/motion_servo_cmd");
@@ -173,22 +176,12 @@ class MiDogRealNode final : public rclcpp::Node {
     pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
         pose_topic, rclcpp::SensorDataQoS(),
         [this](geometry_msgs::msg::PoseStamped::ConstSharedPtr pose) {
-          last_pose_ = now();
-          const auto &q = pose->pose.orientation;
-          const double norm = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-          if (!std::isfinite(norm) || norm < 0.5) {
-            pose_valid_ = false;
-            return;
-          }
-          const double x = q.x / norm;
-          const double y = q.y / norm;
-          const double z = q.z / norm;
-          const double w = q.w / norm;
-          const double roll = std::atan2(2.0 * (w * x + y * z),
-                                         1.0 - 2.0 * (x * x + y * y));
-          const double pitch = std::asin(std::clamp(2.0 * (w * y - z * x), -1.0, 1.0));
-          tilt_rad_ = std::max(std::abs(roll), std::abs(pitch));
-          pose_valid_ = std::isfinite(tilt_rad_);
+          update_orientation(pose->pose.orientation);
+        });
+    odometry_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+        odometry_topic, rclcpp::SensorDataQoS(),
+        [this](nav_msgs::msg::Odometry::ConstSharedPtr odometry) {
+          update_orientation(odometry->pose.pose.orientation);
         });
     estop_sub_ = create_subscription<std_msgs::msg::Bool>(
         estop_topic, rclcpp::SensorDataQoS(),
@@ -290,6 +283,30 @@ class MiDogRealNode final : public rclcpp::Node {
   }
 
  private:
+  void update_orientation(const geometry_msgs::msg::Quaternion &quaternion) {
+    const double norm = std::sqrt(
+        quaternion.x * quaternion.x + quaternion.y * quaternion.y +
+        quaternion.z * quaternion.z + quaternion.w * quaternion.w);
+    if (!std::isfinite(norm) || norm < 0.5) {
+      return;
+    }
+    const double x = quaternion.x / norm;
+    const double y = quaternion.y / norm;
+    const double z = quaternion.z / norm;
+    const double w = quaternion.w / norm;
+    const double roll = std::atan2(
+        2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y));
+    const double pitch = std::asin(
+        std::clamp(2.0 * (w * y - z * x), -1.0, 1.0));
+    const double tilt = std::max(std::abs(roll), std::abs(pitch));
+    if (!std::isfinite(tilt)) {
+      return;
+    }
+    tilt_rad_ = tilt;
+    last_pose_ = now();
+    pose_valid_ = true;
+  }
+
   void inhibit_race(const char *reason, const char *event) {
     voice_enabled_ = false;
     command_ = geometry_msgs::msg::Twist{};
@@ -551,6 +568,7 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr estop_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr voice_command_sub_;

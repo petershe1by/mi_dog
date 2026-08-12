@@ -46,6 +46,11 @@
 | 数据/参数 | 数值 | 来源/等级 |
 | --- | --- | --- |
 | `/odom_out` | 约 48 Hz | 现场 `topic hz`，B |
+| `/odom_out` 复测 | 268/6.02 s，约 44.55 Hz | 2026-08-12 SensorDataQoS 只读计数，B |
+| `/scan` 复测 | 48/6.02 s，约 7.98 Hz | 2026-08-12 SensorDataQoS 只读计数，B |
+| `/image` 默认状态 | 0/6.02 s，无发布者 | 2026-08-12 只读计数和 topic info，B |
+| `/image` 手工启用 | 76/8.03 s，约 9.46 Hz，640x480 `bgr8` | 原厂 camera service command 9，随后 command 10 关闭，B |
+| `/pose_filtered`、`dog_pose`、`tracking_pose_transformed` | 均 0/6.02 s | 2026-08-12 只读计数，B |
 | BMS | 约 1 Hz | 现场观察，B |
 | `contactEstimate[4]` | 约 50 Hz | LCM 桥，B |
 | 运动适配传感器新鲜度 | 1.0 s | 配置，A |
@@ -68,6 +73,10 @@
 | 步高 | 0.05 m | 运动节点配置，A |
 
 以上运动参数存在于代码，但当前正式配置 `enable_motion=false`，不代表非零运动已经批准。
+
+2026-08-12 odom 姿态备用输入候选在 ARM64 增量编译通过。隔离节点使用真实 `/scan` 和
+`/odom_out`，在相机关闭条件下连续报告 `camera=0 lidar=1 pose=1`；隔离运动输出话题 9 秒
+收到 0 帧。测试未连接真实 `motion_servo_cmd`，不构成非零运动验收。
 
 ## 足端与姿态动作
 

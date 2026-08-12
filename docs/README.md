@@ -6,15 +6,17 @@
 1. [项目交接总览](PROJECT_HANDOFF.md)：目标、当前状态、已完成内容、阻塞项和接手步骤。
 2. [架构与文件地图](ARCHITECTURE_AND_FILE_MAP.md)：数据流、节点职责、接口和每个文件的位置。
 3. [真机操作手册](REAL_ROBOT_RUNBOOK.md)：联网、开机检查、语音/触摸、暂停恢复、日志和关机。
-4. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
-5. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
-6. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
-7. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
-8. [路线图](ROADMAP.md)：最终目标、下一步、完成条件和安全顺序。
+4. [组委会确认单](ORGANIZER_CONFIRMATION.md)：启动、暂停、急停、端口和离线架构的正式问题与答复记录。
+5. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
+6. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
+7. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
+8. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
+9. [路线图](ROADMAP.md)：最终目标、下一步、完成条件和安全顺序。
 
 现有专题文档：
 
 - [仿真验收矩阵](../TESTING.md)
+- [真机一键只读审计](../scripts/robot_read_only_audit.sh)
 - [真机部署检查点](../REAL_ROBOT_DEPLOYMENT.md)
 - [比赛暂停与恢复设计](../RACE_RECOVERY_DESIGN.md)
 - [真机 ROS 2 包说明](../mi_dog_real/README.md)
