@@ -3,6 +3,7 @@ set -euo pipefail
 
 target="${MI_DOG_TARGET:-mi@192.168.44.1}"
 action="${1:-}"
+maintenance_controls="${MI_DOG_MAINTENANCE_CONTROLS:-0}"
 connect_timeout=5
 
 usage() {
@@ -12,6 +13,7 @@ Usage: robot_posture.sh {stand|lie-down}
 Calls only the robot's observed official posture motion IDs: recovery stand
 (111) or high-damping lie-down (101). The action is refused unless BMS,
 supervisor, run-permission, and posture-specific safety gates are satisfied.
+It additionally requires the explicit local MI_DOG_MAINTENANCE_CONTROLS=1 gate.
 EOF
 }
 
@@ -20,6 +22,11 @@ case "$action" in
   lie-down) motion_id=101 ;;
   *) usage; exit 2 ;;
 esac
+
+if [[ "$maintenance_controls" != 1 ]]; then
+  echo "posture_refused=maintenance_controls_disabled" >&2
+  exit 3
+fi
 
 ssh_options=(
   -o StrictHostKeyChecking=accept-new
@@ -52,6 +59,7 @@ import time
 import rclpy
 from protocol.msg import BmsStatus, MotionStatus
 from protocol.srv import MotionResultCmd
+from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
 from rclpy.qos import (
@@ -64,6 +72,7 @@ from std_msgs.msg import Bool, String
 
 action = sys.argv[1]
 motion_id = int(sys.argv[2])
+hard_minimum_soc = 30
 expected_ids = {"stand": 111, "lie-down": 101}
 if expected_ids.get(action) != motion_id:
     raise SystemExit("posture_refused=invalid_action_mapping")
@@ -139,7 +148,11 @@ if parameter_client.wait_for_service(timeout_sec=2.0):
     future = parameter_client.call_async(request)
     rclpy.spin_until_future_complete(node, future, timeout_sec=3.0)
     if future.done() and future.result() and future.result().values:
-        minimum_soc = int(future.result().values[0].integer_value)
+        parameter = future.result().values[0]
+        candidate = int(parameter.integer_value)
+        if (parameter.type == ParameterType.PARAMETER_INTEGER and
+                hard_minimum_soc <= candidate <= 100):
+            minimum_soc = max(hard_minimum_soc, candidate)
 
 required = {
     "state", "run_allowed", "safe_to_lie_down", "safety_reason",

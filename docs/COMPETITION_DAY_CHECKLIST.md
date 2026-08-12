@@ -29,10 +29,12 @@
 ```
 
 也可运行 `./scripts/start_competition_ui.sh` 使用本地控制台；XTerminal 连接参数见
-[`COMPETITION_UI.md`](COMPETITION_UI.md)。调试移动键不得用于比赛人工方向控制。
+[`COMPETITION_UI.md`](COMPETITION_UI.md)。默认比赛模式从后端拒绝调试移动和人工姿态；正式
+比赛严禁使用 `--maintenance-controls` 启动 UI。
 
-密码只在 SSH/sudo 交互提示中输入，不写入脚本、文档或 shell 历史。脚本不提供方向、速度、
-步态和姿态参数。`restart` 只恢复已保存赛段号，状态强制回到 `DOWN_WAITING`，不会自动运动。
+密码只在 SSH/sudo 交互提示中输入，不写入脚本、文档或 shell 历史。正式比赛入口不提供方向、
+速度、步态和姿态参数；仓库中的维护脚本不属于比赛入口。`restart` 只恢复已保存赛段号，状态
+强制回到 `DOWN_WAITING`，不会自动运动。
 
 ## 赛前携带
 
@@ -50,6 +52,7 @@
 - `manage_dialogue=false`；上场前仍为无运动验收阶段时还必须确认 `enable_motion=false`；
 - 相机、雷达、odom、BMS、运控状态和检查点可读；
 - `status` 返回预期状态、赛段和 `run_allowed`；
+- UI 显示“正式比赛模式”，人工移动/姿态按钮均锁定；
 - 已现场演练电脑 `pause` 与 `restart`，两者都不会自动恢复运动；
 - 无网线、无 Wi-Fi 冷启动证据有效；若比赛时接直连网线，它只承载结构化操作，不承载算力；
 - 全队知道谁操作电脑、谁观察机器狗、谁与裁判沟通。

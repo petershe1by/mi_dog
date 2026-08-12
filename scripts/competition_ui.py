@@ -8,8 +8,10 @@ import html
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import select
+import signal
 import subprocess
 import sys
 import threading
@@ -47,6 +49,11 @@ ALLOWED_JOGS = {
     "stop",
 }
 ALLOWED_POSTURES = {"stand", "lie-down"}
+CAMERA_TOKEN_TTL_SECONDS = 15.0
+
+
+class OperationBusyError(RuntimeError):
+    """Raised when a second non-emergency robot write is attempted."""
 
 
 def parse_key_values(output: str) -> dict[str, str]:
@@ -63,13 +70,19 @@ def parse_key_values(output: str) -> dict[str, str]:
 class UiServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, handler, *, target: str, identity: Path):
+    def __init__(
+            self, address, handler, *, target: str, identity: Path,
+            maintenance_controls: bool = False):
         super().__init__(address, handler)
         self.target = target
         self.identity = identity
+        self.maintenance_controls = maintenance_controls
         self.token = secrets.token_urlsafe(32)
+        self.operation_lock = threading.Lock()
         self.camera_session_lock = threading.Lock()
         self.camera_metrics_lock = threading.Lock()
+        self.camera_token_lock = threading.Lock()
+        self.camera_stream_tokens: dict[str, float] = {}
         self.camera_active = False
         self.camera_frames = 0
         self.camera_bytes = 0
@@ -81,33 +94,63 @@ class UiServer(ThreadingHTTPServer):
         environment["MI_DOG_TARGET"] = self.target
         environment["MI_DOG_SSH_BATCH_MODE"] = "1"
         environment["MI_DOG_SSH_IDENTITY"] = str(self.identity)
+        environment["MI_DOG_MAINTENANCE_CONTROLS"] = (
+            "1" if self.maintenance_controls else "0")
+        process = subprocess.Popen(
+            command,
+            cwd=ROOT,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
         try:
-            result = subprocess.run(
-                command,
-                cwd=ROOT,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=timeout,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as error:
+            stdout, stderr = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            if process.poll() is None:
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+            try:
+                stdout, stderr = process.communicate(timeout=3)
+            except subprocess.TimeoutExpired:
+                if process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                stdout, stderr = process.communicate()
             return {
                 "ok": False,
                 "returncode": 124,
-                "stdout": error.stdout or "",
-                "stderr": "command timed out",
+                "stdout": stdout or "",
+                "stderr": (stderr or "") + "\ncommand timed out",
                 "values": {},
             }
         return {
-            "ok": result.returncode == 0,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "values": parse_key_values(result.stdout),
+            "ok": process.returncode == 0,
+            "returncode": process.returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+            "values": parse_key_values(stdout),
         }
+
+    def run_exclusive_tool(self, command: list[str], timeout: int) -> dict:
+        if not self.operation_lock.acquire(blocking=False):
+            raise OperationBusyError(
+                "another robot operation is active; use STOP for an emergency override")
+        try:
+            return self.run_tool(command, timeout)
+        finally:
+            self.operation_lock.release()
+
+    def require_maintenance_controls(self) -> None:
+        if not self.maintenance_controls:
+            raise PermissionError(
+                "manual movement and posture controls are disabled in competition mode")
 
     def control(self, action: str, stage: int | None = None) -> dict:
         if action not in ALLOWED_ACTIONS:
@@ -118,17 +161,42 @@ class UiServer(ThreadingHTTPServer):
                 raise ValueError("stage must be 1..6")
             command.extend(["--stage", str(stage)])
         command.append(action)
-        return self.run_tool(command, 120 if action == "restart" else 25)
+        timeout = 120 if action == "restart" else 25
+        if action in {"status", "stop"}:
+            return self.run_tool(command, timeout)
+        return self.run_exclusive_tool(command, timeout)
 
     def jog(self, direction: str) -> dict:
         if direction not in ALLOWED_JOGS:
             raise ValueError("unsupported jog direction")
-        return self.run_tool([str(JOG_SCRIPT), direction], 20)
+        self.require_maintenance_controls()
+        command = [str(JOG_SCRIPT), direction]
+        if direction == "stop":
+            return self.run_tool(command, 20)
+        return self.run_exclusive_tool(command, 20)
 
     def posture(self, action: str) -> dict:
         if action not in ALLOWED_POSTURES:
             raise ValueError("unsupported posture action")
-        return self.run_tool([str(POSTURE_SCRIPT), action], 65)
+        self.require_maintenance_controls()
+        return self.run_exclusive_tool([str(POSTURE_SCRIPT), action], 65)
+
+    def issue_camera_token(self) -> str:
+        now = time.monotonic()
+        token = secrets.token_urlsafe(18)
+        with self.camera_token_lock:
+            self.camera_stream_tokens = {
+                value: expiry for value, expiry in self.camera_stream_tokens.items()
+                if expiry > now
+            }
+            self.camera_stream_tokens[token] = now + CAMERA_TOKEN_TTL_SECONDS
+        return token
+
+    def consume_camera_token(self, token: str) -> bool:
+        now = time.monotonic()
+        with self.camera_token_lock:
+            expiry = self.camera_stream_tokens.pop(token, None)
+            return expiry is not None and expiry > now
 
     def camera_process(self) -> subprocess.Popen:
         remote_command = (
@@ -194,12 +262,20 @@ class UiServer(ThreadingHTTPServer):
             fps = 0.0
             if len(stamps) >= 2 and stamps[-1] > stamps[0]:
                 fps = (len(stamps) - 1) / (stamps[-1] - stamps[0])
+            elapsed = (
+                time.monotonic() - self.camera_started
+                if self.camera_active and self.camera_started > 0.0 else 0.0)
+            megabits_per_second = (
+                self.camera_bytes * 8.0 / elapsed / 1_000_000.0
+                if elapsed > 0.0 else 0.0)
             return {
                 "ok": True,
                 "active": self.camera_active,
                 "fps": round(fps, 2),
                 "frames": self.camera_frames,
                 "megabytes": round(self.camera_bytes / 1_000_000.0, 2),
+                "megabits_per_second": round(megabits_per_second, 2),
+                "elapsed_seconds": round(elapsed, 1),
                 "source_limit_fps": 10,
             }
 
@@ -208,7 +284,13 @@ class RequestHandler(BaseHTTPRequestHandler):
     server: UiServer
 
     def log_message(self, fmt: str, *args) -> None:
-        sys.stderr.write("[ui] " + fmt % args + "\n")
+        # Never leave the one-time stream credential in access/error logs.
+        safe_args = tuple(
+            re.sub(r"([?&]token=)[^&\s]+", r"\1<redacted>", value)
+            if isinstance(value, str) else value
+            for value in args
+        )
+        sys.stderr.write("[ui] " + fmt % safe_args + "\n")
 
     def send_bytes(self, data: bytes, content_type: str, status=HTTPStatus.OK) -> None:
         self.send_response(status)
@@ -271,6 +353,23 @@ class RequestHandler(BaseHTTPRequestHandler):
             return None
         return self.read_exact(process.stdout, byte_count, timeout)
 
+    @staticmethod
+    def drain_camera_stderr(pipe, chunks: bytearray, lock: threading.Lock) -> None:
+        if pipe is None:
+            return
+        descriptor = pipe.fileno()
+        while True:
+            try:
+                chunk = os.read(descriptor, 4096)
+            except OSError:
+                return
+            if not chunk:
+                return
+            with lock:
+                chunks.extend(chunk)
+                if len(chunks) > 16_384:
+                    del chunks[:-16_384]
+
     def stream_camera(self) -> None:
         if not self.server.camera_session_lock.acquire(blocking=False):
             self.send_json(
@@ -279,18 +378,26 @@ class RequestHandler(BaseHTTPRequestHandler):
             )
             return
         process = None
+        stderr_thread = None
+        stderr_chunks = bytearray()
+        stderr_lock = threading.Lock()
         try:
             process = self.server.camera_process()
+            stderr_thread = threading.Thread(
+                target=self.drain_camera_stderr,
+                args=(process.stderr, stderr_chunks, stderr_lock),
+                name="mi-dog-camera-stderr",
+                daemon=True,
+            )
+            stderr_thread.start()
             first_frame = self.read_camera_frame(process)
             if first_frame is None:
                 error = "camera stream unavailable"
-                if process.stderr is not None:
-                    ready, _, _ = select.select([process.stderr.fileno()], [], [], 0)
-                    if ready:
-                        detail = os.read(process.stderr.fileno(), 2048).decode(
-                            "utf-8", errors="replace").strip()
-                        if detail:
-                            error = detail
+                with stderr_lock:
+                    detail = bytes(stderr_chunks).decode(
+                        "utf-8", errors="replace").strip()
+                if detail:
+                    error = detail[-2048:]
                 self.send_json({"ok": False, "error": error}, HTTPStatus.BAD_GATEWAY)
                 return
             self.send_response(HTTPStatus.OK)
@@ -321,6 +428,8 @@ class RequestHandler(BaseHTTPRequestHandler):
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=3)
+            if stderr_thread is not None:
+                stderr_thread.join(timeout=1)
             self.server.camera_session_lock.release()
 
     def do_GET(self) -> None:
@@ -330,6 +439,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             template = (UI_ROOT / "index.html").read_text(encoding="utf-8")
             page = template.replace("__MI_DOG_TOKEN__", html.escape(self.server.token)).replace(
                 "__MI_DOG_TARGET__", html.escape(self.server.target)
+            ).replace(
+                "__MI_DOG_MAINTENANCE_CONTROLS__",
+                "true" if self.server.maintenance_controls else "false",
             )
             self.send_bytes(page.encode("utf-8"), "text/html; charset=utf-8")
             return
@@ -348,7 +460,21 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_json(self.server.control("status"))
             return
         if path == "/api/health":
-            self.send_json({"ok": True, "target": self.server.target})
+            self.send_json({
+                "ok": True,
+                "target": self.server.target,
+                "maintenance_controls": self.server.maintenance_controls,
+            })
+            return
+        if path == "/api/camera/token":
+            if self.headers.get("X-Mi-Dog-Token") != self.server.token:
+                self.send_json({"ok": False, "error": "invalid UI token"}, HTTPStatus.FORBIDDEN)
+                return
+            self.send_json({
+                "ok": True,
+                "stream_token": self.server.issue_camera_token(),
+                "expires_in_seconds": CAMERA_TOKEN_TTL_SECONDS,
+            })
             return
         if path == "/api/camera/metrics":
             if self.headers.get("X-Mi-Dog-Token") != self.server.token:
@@ -358,8 +484,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/camera/stream":
             query_token = parse_qs(parsed.query).get("token", [""])[0]
-            if not secrets.compare_digest(query_token, self.server.token):
-                self.send_json({"ok": False, "error": "invalid UI token"}, HTTPStatus.FORBIDDEN)
+            if not self.server.consume_camera_token(query_token):
+                self.send_json({"ok": False, "error": "invalid or expired stream token"}, HTTPStatus.FORBIDDEN)
                 return
             self.stream_camera()
             return
@@ -384,6 +510,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": False, "error": "not found"}, HTTPStatus.NOT_FOUND)
         except PermissionError as error:
             self.send_json({"ok": False, "error": str(error)}, HTTPStatus.FORBIDDEN)
+        except OperationBusyError as error:
+            self.send_json({"ok": False, "error": str(error)}, HTTPStatus.CONFLICT)
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self.send_json({"ok": False, "error": str(error)}, HTTPStatus.BAD_REQUEST)
         except Exception as error:  # Keep the local UI alive and surface a compact error.
@@ -404,6 +532,11 @@ def parse_args() -> argparse.Namespace:
         )),
     )
     parser.add_argument("--open", action="store_true", help="Open the local UI in a browser")
+    parser.add_argument(
+        "--maintenance-controls",
+        action="store_true",
+        help="Explicitly enable manual jog/posture controls; keep disabled for competition",
+    )
     return parser.parse_args()
 
 
@@ -417,10 +550,19 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
-    server = UiServer((args.bind, args.port), RequestHandler, target=args.target, identity=identity)
+    server = UiServer(
+        (args.bind, args.port),
+        RequestHandler,
+        target=args.target,
+        identity=identity,
+        maintenance_controls=args.maintenance_controls,
+    )
     url = f"http://{args.bind}:{args.port}/"
     print(f"Mi Dog competition UI: {url}")
     print(f"Robot target: {args.target}")
+    print(
+        "Manual maintenance controls: "
+        + ("ENABLED" if args.maintenance_controls else "disabled (competition mode)"))
     if args.open:
         webbrowser.open(url)
     try:

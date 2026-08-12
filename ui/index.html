@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="mi-dog-token" content="__MI_DOG_TOKEN__">
   <meta name="mi-dog-target" content="__MI_DOG_TARGET__">
+  <meta name="mi-dog-maintenance-controls" content="__MI_DOG_MAINTENANCE_CONTROLS__">
   <title>铁蛋比赛控制台</title>
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -69,15 +70,19 @@
         <div id="videoPlaceholder">通过 SSH 连接后点击“开启视频”</div>
         <img id="cameraStream" alt="CyberDog 2 头部 RGB 实时画面">
       </div>
-      <p class="hint">源相机为 640×480、10 fps 配置；本机既有测量约 8.37–9.46 fps。UI 使用单条 SSH 长连接和 JPEG 转发，实际帧率会显示在右上角。</p>
+      <p class="hint">源相机为 640×480、10 fps 配置；已留档的原始话题测量约 8.14–9.46 fps。UI 使用单条 SSH 长连接和 JPEG 转发，实际帧率与带宽会显示在右上角。</p>
     </section>
 
     <section class="two-column">
       <section class="panel">
         <div class="panel-title">
           <div><p class="kicker">调试模式</p><h2>简单移动</h2></div>
-          <span class="lock" id="jogLock">默认锁定</span>
+          <div class="lock-group">
+            <span class="lock" id="maintenanceMode">比赛模式</span>
+            <span class="lock" id="jogLock">默认锁定</span>
+          </div>
         </div>
+        <p class="hint maintenance-hint" id="maintenanceHint">正式比赛模式下，人工移动与姿态接口由后端关闭。仅限赛前维护时使用 <code>--maintenance-controls</code> 显式启用。</p>
         <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足电量 ≥30%、未接充电线、enable_motion=True 和 run_allowed=true。物理测试建议从 ≥50% 开始。</p>
         <div class="posture-row">
           <button class="posture stand" data-posture="stand">起立</button>

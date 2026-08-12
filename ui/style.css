@@ -68,6 +68,8 @@ select { width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid v
 #videoPlaceholder { color: var(--muted); text-align: center; padding: 20px; }
 .lock { padding: 7px 10px; border-radius: 999px; background: rgba(255, 201, 103, .1); color: var(--amber); font-size: 12px; font-weight: 800; }
 .lock.unlocked { background: rgba(118, 220, 143, .1); color: var(--green); }
+.lock-group { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.maintenance-hint { padding: 10px 12px; border: 1px solid rgba(255, 201, 103, .25); border-radius: 10px; background: rgba(255, 201, 103, .06); }
 .jog-pad { display: grid; grid-template-columns: repeat(3, minmax(86px, 1fr)); gap: 8px; max-width: 520px; margin: 18px auto 0; }
 .jog-pad button { background: var(--panel-2); border-color: var(--line); }
 .jog-pad .jog-stop { background: rgba(255, 93, 104, .15); border-color: rgba(255, 93, 104, .5); color: #ffb4ba; }

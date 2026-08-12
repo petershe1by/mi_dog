@@ -37,7 +37,7 @@
 - 真机包使用官方 `motion_servo_cmd` 的慢速步态接口，并将步高限定为开发者手册明确开放的 `0.05 m`；没有修改步长、机身高度或跳跃高度。
 - 三个 Type-C 已确认为 `UDisk`、`charge`、`download`；比赛程序运行在狗内置主控，不依赖
   网线或 Wi-Fi。电脑仅用于开始、暂停和重启。具体流程见 [`mi_dog_real/README.md`](mi_dog_real/README.md)。
-- 本地比赛 UI、赛段选择和 XTerminal/SSH 配置见
+- 默认禁用人工运动的本地比赛 UI、赛段选择和 XTerminal/SSH 配置见
   [`docs/COMPETITION_UI.md`](docs/COMPETITION_UI.md)。
 
 ## 构建与运行

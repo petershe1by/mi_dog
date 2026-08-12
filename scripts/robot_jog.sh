@@ -3,6 +3,7 @@ set -euo pipefail
 
 target="${MI_DOG_TARGET:-mi@192.168.44.1}"
 direction="${1:-}"
+maintenance_controls="${MI_DOG_MAINTENANCE_CONTROLS:-0}"
 connect_timeout=5
 
 usage() {
@@ -11,7 +12,8 @@ Usage: robot_jog.sh {forward|backward|left|right|turn-left|turn-right|stop}
 
 Publishes one low-speed 0.25-second pulse to /mi_dog_real/safe_cmd_vel.
 Nonzero pulses are refused unless enable_motion=True and the supervisor's
-latched run_allowed value is true. A zero command is always permitted.
+latched run_allowed value is true. They also require the explicit local
+MI_DOG_MAINTENANCE_CONTROLS=1 gate. A zero command is always permitted.
 EOF
 }
 
@@ -25,6 +27,11 @@ case "$direction" in
   stop)       vx=0.0;   vy=0.0;   wz=0.0 ;;
   *) usage; exit 2 ;;
 esac
+
+if [[ "$direction" != stop && "$maintenance_controls" != 1 ]]; then
+  echo "jog_refused=maintenance_controls_disabled" >&2
+  exit 3
+fi
 
 ssh_options=(
   -o StrictHostKeyChecking=accept-new

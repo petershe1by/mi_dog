@@ -86,9 +86,10 @@ safe_cmd_vel ──────────────────────�
 | `scripts/smoke_test.sh` | 检查仿真基础设施，不替代全程验收 |
 | `scripts/start_sim.sh` | 容器内启动 Gazebo、控制器和自治节点 |
 | `scripts/competition_control.sh` | 电脑端比赛操作入口；只发送白名单事件或重启服务，不发送运动命令 |
-| `scripts/competition_ui.py` + `ui/` | 仅本机监听的比赛 Web UI；随机令牌、固定白名单、状态展示、调试移动/姿态安全门和按需 RGB 流 |
-| `scripts/robot_jog.sh` | 0.25 秒低速调试脉冲；非零指令要求运动总开关和 supervisor 许可同时成立 |
-| `scripts/robot_posture.sh` | 原厂 `111/101` 起立/趴下入口；执行前重新读取 supervisor、BMS 和运控状态 |
+| `scripts/competition_ui.py` + `ui/` | 仅本机监听的比赛 Web UI；默认比赛模式后端禁用人工运动，写操作互斥、STOP 请求绕过互斥锁、一次性视频令牌和按需 RGB 流 |
+| `scripts/competition_ui_offline_test.py` | 不连接狗的 HTTP/并发回归；覆盖比赛模式闭锁、写冲突、STOP 请求并发派发、超时进程组回收和视频安全 |
+| `scripts/robot_jog.sh` | 0.25 秒低速维护脉冲；非零指令额外要求显式维护环境门、运动总开关和 supervisor 许可 |
+| `scripts/robot_posture.sh` | 原厂 `111/101` 维护姿态入口；要求显式维护环境门并重新读取 supervisor、BMS 和运控状态 |
 | `scripts/robot_camera_stream.py` | 经 SSH 临时送入狗主控运行的只读 ROS Image→JPEG 转发器；不部署到狗上 |
 | `scripts/connect_robot.sh` | 使用专用 SSH 密钥连接狗主控，适合作为 XTerminal 外的维护后备 |
 | `scripts/setup_robot_ssh_key.sh` | 一次性创建和安装 UI 专用 Ed25519 公钥，不保存密码 |

@@ -2,6 +2,8 @@
   "use strict";
   const token = document.querySelector('meta[name="mi-dog-token"]').content;
   const target = document.querySelector('meta[name="mi-dog-target"]').content;
+  const maintenanceControlsEnabled =
+    document.querySelector('meta[name="mi-dog-maintenance-controls"]').content === "true";
   const log = document.getElementById("log");
   let busy = false;
   let refreshInFlight = false;
@@ -32,14 +34,21 @@
   function setBusy(value) {
     busy = value;
     document.querySelectorAll("button").forEach((button) => {
-      if (button.dataset.jog === "stop" || button.dataset.action === "stop") return;
+      if (button.dataset.action === "stop") return;
+      if (button.dataset.jog === "stop") {
+        button.disabled = !maintenanceControlsEnabled;
+        return;
+      }
       const requestsMotion = button.dataset.action === "start" ||
         button.id === "continueStage" ||
         (button.dataset.jog && button.dataset.jog !== "stop");
       const requestsPosture = Boolean(button.dataset.posture);
+      const maintenanceBlocked = (requestsPosture || Boolean(button.dataset.jog)) &&
+        !maintenanceControlsEnabled;
       const postureBlocked = requestsPosture && (
         !postureControlsReady || (button.dataset.posture === "lie-down" && !lieDownReady));
-      button.disabled = value || (requestsMotion && !batteryAllowsMotion) || postureBlocked;
+      button.disabled = value || maintenanceBlocked ||
+        (requestsMotion && !batteryAllowsMotion) || postureBlocked;
     });
   }
 
@@ -64,15 +73,20 @@
     batteryAllowsMotion = Number.isFinite(batteryPercent) &&
       Number.isFinite(minBatteryPercent) && batteryPercent >= minBatteryPercent &&
       values.wired_charging === "false" && values.power_normal === "true";
-    const jogReady = batteryAllowsMotion && values.enable_motion === "True" &&
+    const jogReady = maintenanceControlsEnabled && batteryAllowsMotion &&
+      values.enable_motion === "True" &&
       values.run_allowed === "true";
-    postureControlsReady = batteryAllowsMotion &&
+    postureControlsReady = maintenanceControlsEnabled && batteryAllowsMotion &&
       ["DOWN_WAITING", "PAUSED"].includes(values.state) && values.run_allowed === "false";
     lieDownReady = postureControlsReady && values.safe_to_lie_down === "true" &&
       values.safety_reason === "ready";
     const jogLock = document.getElementById("jogLock");
     jogLock.textContent = jogReady ? "调试移动已放行" : "调试移动锁定";
     jogLock.className = `lock ${jogReady ? "unlocked" : ""}`;
+    const maintenanceMode = document.getElementById("maintenanceMode");
+    maintenanceMode.textContent = maintenanceControlsEnabled ? "维护控制已启用" : "正式比赛模式";
+    maintenanceMode.className = `lock ${maintenanceControlsEnabled ? "unlocked" : ""}`;
+    document.getElementById("maintenanceHint").hidden = maintenanceControlsEnabled;
     setBusy(busy);
   }
 
@@ -154,8 +168,14 @@
     if (!videoActive) return;
     try {
       const metrics = await request("/api/camera/metrics");
+      if (!metrics.active && Number(metrics.frames) > 0) {
+        stopVideo("视频流已断开");
+        return;
+      }
       const rate = document.getElementById("videoRate");
-      rate.textContent = metrics.active ? `${Number(metrics.fps).toFixed(1)} fps` : "正在连接";
+      rate.textContent = metrics.active ?
+        `${Number(metrics.fps).toFixed(1)} fps · ${Number(metrics.megabits_per_second).toFixed(1)} Mb/s` :
+        "正在连接";
       rate.className = `lock ${metrics.active ? "unlocked" : ""}`;
     } catch (error) {
       document.getElementById("videoRate").textContent = "视频状态异常";
@@ -165,6 +185,7 @@
   function stopVideo(message = "视频已停止") {
     videoActive = false;
     const image = document.getElementById("cameraStream");
+    image.onerror = null;
     image.removeAttribute("src");
     image.classList.remove("visible");
     document.getElementById("videoPlaceholder").hidden = false;
@@ -176,20 +197,26 @@
     if (message) stamp(message);
   }
 
-  function startVideo() {
+  async function startVideo() {
     videoActive = true;
     const image = document.getElementById("cameraStream");
     document.getElementById("videoPlaceholder").hidden = true;
     document.getElementById("videoToggle").textContent = "停止视频";
     document.getElementById("videoRate").textContent = "正在连接";
-    image.classList.add("visible");
-    image.src = `/api/camera/stream?token=${encodeURIComponent(token)}&nonce=${Date.now()}`;
-    image.onerror = () => {
-      if (videoActive) stopVideo("视频连接失败或已断开");
-    };
     videoMetricsTimer = window.setInterval(refreshVideoMetrics, 2000);
     refreshVideoMetrics();
     stamp("开启头部 RGB 视频");
+    try {
+      const authorization = await request("/api/camera/token");
+      if (!videoActive) return;
+      image.classList.add("visible");
+      image.onerror = () => {
+        if (videoActive) stopVideo("视频连接失败或已断开");
+      };
+      image.src = `/api/camera/stream?token=${encodeURIComponent(authorization.stream_token)}`;
+    } catch (error) {
+      if (videoActive) stopVideo(`视频授权失败：${error.message}`);
+    }
   }
 
   document.querySelectorAll("[data-action]").forEach((button) => {
@@ -215,6 +242,7 @@
   });
   document.getElementById("clearLog").addEventListener("click", () => { log.textContent = "等待操作…"; });
   document.getElementById("target").textContent = target;
+  setBusy(false);
   refresh(false);
   window.setInterval(() => refresh(true), 10000);
 })();
