@@ -155,10 +155,12 @@ manage_dialogue="$(read_param /mi_dog_real manage_dialogue || true)"
 require_supervisor="$(read_param /mi_dog_real require_supervisor_run_allowed || true)"
 require_sensor="$(read_param /mi_dog_real require_sensor_ready || true)"
 require_estop="$(read_param /mi_dog_real require_estop_ready || true)"
+min_battery_soc="$(read_param /mi_dog_supervisor min_battery_soc || true)"
 
 expect_equal enable_motion "$enable_motion" False
 expect_equal manage_dialogue "$manage_dialogue" False
 expect_equal require_supervisor_run_allowed "$require_supervisor" True
+expect_equal min_battery_soc "$min_battery_soc" 30
 printf '[INFO] require_sensor_ready=%s\n' "${require_sensor:-<empty>}"
 printf '[INFO] require_estop_ready=%s\n' "${require_estop:-<empty>}"
 

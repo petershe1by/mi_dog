@@ -37,6 +37,7 @@ install(PROGRAMS
   scripts/estop_hid_input.py
   scripts/estop_hid_isolated_test.py
   scripts/motion_servo_sequence_isolated_test.py
+  scripts/supervisor_power_gate_isolated_test.py
   scripts/supervisor_stage_select_isolated_test.py
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config launch

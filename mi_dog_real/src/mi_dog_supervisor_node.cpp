@@ -85,11 +85,15 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     max_tilt_rad_ = declare_parameter<double>("max_tilt_deg", 25.0) * M_PI / 180.0;
     max_linear_speed_ = declare_parameter<double>("max_linear_speed", 0.03);
     max_angular_speed_ = declare_parameter<double>("max_angular_speed", 0.08);
+    min_battery_soc_ = declare_parameter<int>("min_battery_soc", 30);
     checkpoint_path_ = declare_parameter<std::string>(
         "checkpoint_path", "/home/mi/mi_dog_ws/state/supervisor_checkpoint.txt");
     current_stage_ = declare_parameter<int>("initial_stage", kFirstStage);
     if (current_stage_ < kFirstStage || current_stage_ > kLastStage) {
       throw std::invalid_argument("initial_stage must be in [1, 6]");
+    }
+    if (min_battery_soc_ < 1 || min_battery_soc_ > 100) {
+      throw std::invalid_argument("min_battery_soc must be in [1, 100]");
     }
 
     load_checkpoint();
@@ -281,6 +285,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
 
   void handle_bms_status(const protocol::msg::BmsStatus &message) {
     wired_charging_ = message.power_wired_charging;
+    battery_soc_ = message.batt_soc;
     bms_healthy_ = message.power_normal &&
                    !message.charge_over_current &&
                    !message.discharge_over_current &&
@@ -369,6 +374,9 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     } else if (!bms_healthy_) {
       raw_safe = false;
       reason = "bms_not_healthy";
+    } else if (battery_soc_ < min_battery_soc_) {
+      raw_safe = false;
+      reason = "battery_soc_below_minimum";
     } else if (wired_charging_) {
       raw_safe = false;
       reason = "wired_charging_motion_inhibited";
@@ -396,7 +404,8 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   }
 
   bool power_allows_motion(const rclcpp::Time &current_time) const {
-    return have_bms_status_ && bms_healthy_ && !wired_charging_ &&
+    return have_bms_status_ && bms_healthy_ &&
+           battery_soc_ >= min_battery_soc_ && !wired_charging_ &&
            (current_time - last_bms_status_time_).seconds() <= sensor_freshness_sec_ * 3.0;
   }
 
@@ -415,9 +424,14 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   }
 
   void publish_run_allowed(const rclcpp::Time &current_time) {
+    const bool inputs_allow_motion = run_inputs_allow_motion(current_time);
+    if (state_ == SupervisorState::kRunning && !inputs_allow_motion) {
+      transition(SupervisorState::kPaused, "runtime safety input revoked");
+      return;
+    }
     std_msgs::msg::Bool message;
     message.data = state_ == SupervisorState::kRunning &&
-                   run_inputs_allow_motion(current_time);
+                   inputs_allow_motion;
     run_allowed_pub_->publish(message);
   }
 
@@ -508,6 +522,8 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   bool motion_status_healthy_{false};
   bool motion_errors_clear_{false};
   int8_t motion_switch_status_{0};
+  int min_battery_soc_{30};
+  int battery_soc_{0};
   bool have_bms_status_{false};
   bool bms_healthy_{false};
   bool wired_charging_{false};

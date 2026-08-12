@@ -232,6 +232,18 @@ if parameter_client.wait_for_service(timeout_sec=2.0):
         enable_motion = str(future.result().values[0].bool_value)
 print(f"enable_motion={enable_motion}")
 
+min_battery_soc = "unknown"
+supervisor_parameter_client = node.create_client(
+    GetParameters, "/mi_dog_supervisor/get_parameters")
+if supervisor_parameter_client.wait_for_service(timeout_sec=2.0):
+    request = GetParameters.Request()
+    request.names = ["min_battery_soc"]
+    future = supervisor_parameter_client.call_async(request)
+    rclpy.spin_until_future_complete(node, future, timeout_sec=3.0)
+    if future.done() and future.result() and future.result().values:
+        min_battery_soc = str(future.result().values[0].integer_value)
+print(f"min_battery_soc={min_battery_soc}")
+
 stage_publisher = None
 selected_stage = int(stage_arg) if stage_arg else None
 if selected_stage is not None:

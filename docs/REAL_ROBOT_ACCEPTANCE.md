@@ -19,7 +19,8 @@
 | 在线自定义 TTS | 返回 `status=1` | 不可依赖 |
 | 检查点重启 | 恢复赛段编号但状态强制 `DOWN_WAITING` | 通过 |
 | START/CONTINUE 边沿门 | 不安全拒绝，恢复不自启，必须重发命令 | 隔离测试通过 |
-| 实时 `run_allowed` | ESTOP、倾斜、过期、充电、运控错误撤销 | 隔离测试通过 |
+| 实时 `run_allowed` | ESTOP、倾斜、过期、充电、低电量、运控错误撤销并锁存 PAUSED | 隔离测试通过 |
+| 最低电量门 | `min_battery_soc=30`；18% 拒绝，运行中 20% 暂停，恢复不自启 | ARM64 隔离 11 项通过 |
 | 最终运动节点许可 | missing/false/stale 停止；fresh true 隔离放行 | ARM64 隔离测试通过 |
 | 急停软件守卫 | 启动、首次 false、按下/释放、超时、重连和重新解锁共 8 阶段 | ARM64 隔离测试通过 |
 | USB HID 常闭输入原型 | 7 阶段仅验证 FIFO 软件逻辑；不证明外部 Type-C 可用 | 原型通过、部署撤回 |
@@ -36,7 +37,7 @@
 | 额外实体急停 | 用户确认赛事不要求；旧守卫/HID 不作为比赛前置条件 | 不需要 |
 | Type-C 定义 | 三口为 `UDisk`、`charge`、`download`，物理插接按机身标识 | 已确认 |
 | 电脑暂停/重启停止链 | PAUSE 得到 `PAUSED/false`；重启得到 `DOWN_WAITING/false` | 事件/重启通过，运动 watchdog 待测 |
-| UI 调试移动闭锁 | 正式 `enable_motion=False` 时前进返回码 3；STOP 零脉冲可发送 | 通过，非零运动未批准 |
+| UI 调试移动闭锁 | 低电/充电先锁 UI；正式 `enable_motion=False` 时脚本再次拒绝；STOP 可发送 | 通过，非零运动未批准 |
 | 零速度官方时序 | 官方常量 `0/1/2`；隔离话题三轮 START→DATA，超时/撤权 END | ARM64 隔离 11 项通过；真实运控话题待工装验收 |
 | 非零运动适配 | 完整安全链和停止 watchdog | 未批准 |
 | 相机/定位比赛感知 | 替换 Gazebo 真值 | 未完成 |

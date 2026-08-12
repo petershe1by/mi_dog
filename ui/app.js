@@ -5,6 +5,7 @@
   const log = document.getElementById("log");
   let busy = false;
   let refreshInFlight = false;
+  let batteryAllowsMotion = false;
 
   const fields = {
     service_active: document.getElementById("service"),
@@ -13,6 +14,7 @@
     run_allowed: document.getElementById("runAllowed"),
     enable_motion: document.getElementById("motionEnabled"),
     battery_percent: document.getElementById("batteryPercent"),
+    min_battery_soc: document.getElementById("minBatteryPercent"),
     wired_charging: document.getElementById("wiredCharging"),
     battery_temp_c: document.getElementById("batteryTemp"),
     safety_reason: document.getElementById("reason"),
@@ -27,14 +29,19 @@
     busy = value;
     document.querySelectorAll("button").forEach((button) => {
       if (button.dataset.jog === "stop" || button.dataset.action === "stop") return;
-      button.disabled = value;
+      const requestsMotion = button.dataset.action === "start" ||
+        button.id === "continueStage" ||
+        (button.dataset.jog && button.dataset.jog !== "stop");
+      button.disabled = value || (requestsMotion && !batteryAllowsMotion);
     });
   }
 
   function render(values, ok) {
     Object.entries(fields).forEach(([key, element]) => {
       let value = values[key] ?? "—";
-      if (value !== "—" && key === "battery_percent") value = `${value}%`;
+      if (value !== "—" && (key === "battery_percent" || key === "min_battery_soc")) {
+        value = `${value}%`;
+      }
       if (value !== "—" && key === "battery_temp_c") value = `${value} °C`;
       if (key === "wired_charging") {
         value = value === "true" ? "是" : value === "false" ? "否" : "—";
@@ -45,10 +52,17 @@
     const badge = document.getElementById("connectionBadge");
     badge.textContent = connected ? "已连接" : "连接异常";
     badge.className = `badge ${connected ? "online" : "offline"}`;
-    const jogReady = values.enable_motion === "True" && values.run_allowed === "true";
+    const batteryPercent = Number(values.battery_percent);
+    const minBatteryPercent = Number(values.min_battery_soc);
+    batteryAllowsMotion = Number.isFinite(batteryPercent) &&
+      Number.isFinite(minBatteryPercent) && batteryPercent >= minBatteryPercent &&
+      values.wired_charging === "false" && values.power_normal === "true";
+    const jogReady = batteryAllowsMotion && values.enable_motion === "True" &&
+      values.run_allowed === "true";
     const jogLock = document.getElementById("jogLock");
     jogLock.textContent = jogReady ? "调试移动已放行" : "调试移动锁定";
     jogLock.className = `lock ${jogReady ? "unlocked" : ""}`;
+    setBusy(busy);
   }
 
   async function request(path, method = "GET", payload = null) {

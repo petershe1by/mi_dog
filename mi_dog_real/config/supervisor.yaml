@@ -21,5 +21,8 @@
     max_tilt_deg: 25.0
     max_linear_speed: 0.03
     max_angular_speed: 0.08
+    # Hard safety floor. Competition and physical-motion tests should start at
+    # substantially more charge (recommended >= 50%).
+    min_battery_soc: 30
     checkpoint_path: "/home/mi/mi_dog_ws/state/supervisor_checkpoint.txt"
     initial_stage: 1

@@ -158,6 +158,7 @@ effective_require_sensor_ready="$(read_param /mi_dog_real require_sensor_ready)"
 effective_require_estop_ready="$(read_param /mi_dog_real require_estop_ready)"
 effective_require_supervisor_run_allowed="$(read_param /mi_dog_real require_supervisor_run_allowed)"
 effective_manage_dialogue="$(read_param /mi_dog_real manage_dialogue)"
+effective_min_battery_soc="$(read_param /mi_dog_supervisor min_battery_soc)"
 supervisor_state="$(read_topic_once /mi_dog_real/supervisor/state string)"
 run_allowed="$(read_topic_once /mi_dog_real/supervisor/run_allowed bool)"
 emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
@@ -170,6 +171,7 @@ fi
 for value in "$effective_enable_motion" "$effective_require_sensor_ready" \
              "$effective_require_estop_ready" "$effective_require_supervisor_run_allowed" \
              "$effective_manage_dialogue" \
+             "$effective_min_battery_soc" \
              "$supervisor_state" "$run_allowed" "$emergency_stop" "$estop_guard_status"; do
   if [[ -z "$value" ]]; then
     echo "A required live deployment value was empty; manifest not written." >&2
@@ -197,6 +199,7 @@ done
   echo "require_estop_ready=$effective_require_estop_ready"
   echo "require_supervisor_run_allowed=$effective_require_supervisor_run_allowed"
   echo "manage_dialogue=$effective_manage_dialogue"
+  echo "min_battery_soc=$effective_min_battery_soc"
   echo "supervisor_state=$supervisor_state"
   echo "run_allowed=$run_allowed"
   echo "emergency_stop=$emergency_stop"

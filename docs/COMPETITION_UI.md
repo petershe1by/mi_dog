@@ -26,8 +26,9 @@
 - 选择赛段 1..6 并发送 CONTINUE；赛段选择只允许在 `DOWN_WAITING/PAUSED`，会先持久化
   检查点，选择本身不会开放运动许可；
 - 六向低速调试移动和 STOP；每次非零按钮只产生 0.25 秒脉冲，并同时要求真机
-  `enable_motion=True` 与 `run_allowed=true`。当前正式配置为 `False`，所以按钮按设计拒绝，
-  直到官方运控 ABI 与物理停止链完成验收；
+  电量不低于 supervisor 的实时下限、未接充电线、`enable_motion=True` 与
+  `run_allowed=true`。当前运行下限为 30%，正式配置为 `enable_motion=False`，所以按钮按设计
+  拒绝，直到物理停止链完成验收；
 - SSH 连接信息与状态测试。
 
 ## XTerminal 连接

@@ -26,6 +26,7 @@
       <article><span>运动许可</span><strong id="runAllowed">—</strong></article>
       <article><span>运动总开关</span><strong id="motionEnabled">—</strong></article>
       <article><span>电量</span><strong id="batteryPercent">—</strong></article>
+      <article><span>运行最低电量</span><strong id="minBatteryPercent">—</strong></article>
       <article><span>有线充电</span><strong id="wiredCharging">—</strong></article>
       <article><span>电池温度</span><strong id="batteryTemp">—</strong></article>
       <article class="wide"><span>安全原因</span><strong id="reason">—</strong></article>
@@ -62,7 +63,7 @@
           <div><p class="kicker">调试模式</p><h2>简单移动</h2></div>
           <span class="lock" id="jogLock">默认锁定</span>
         </div>
-        <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足 enable_motion=True 和 run_allowed=true。</p>
+        <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足电量 ≥30%、未接充电线、enable_motion=True 和 run_allowed=true。物理测试建议从 ≥50% 开始。</p>
         <div class="jog-pad">
           <button data-jog="turn-left">↶ 左转</button>
           <button data-jog="forward">↑ 前进</button>
