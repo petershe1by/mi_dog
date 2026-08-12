@@ -158,7 +158,7 @@ import time
 import rclpy
 from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
-from protocol.msg import BmsStatus
+from protocol.msg import BmsStatus, MotionStatus
 from rclpy.qos import (
     DurabilityPolicy,
     QoSProfile,
@@ -190,6 +190,8 @@ battery_keys = (
     "wired_charging",
     "power_normal",
 )
+display_keys = supervisor_keys + ("safe_to_lie_down",) + battery_keys + (
+    "motion_id", "motion_progress", "motion_switch_status")
 
 
 def save(key):
@@ -218,8 +220,22 @@ subscriptions.append(node.create_subscription(
     String, "/mi_dog_real/supervisor/lie_down_safety_reason",
     save("safety_reason"), latched))
 subscriptions.append(node.create_subscription(
+    Bool, "/mi_dog_real/supervisor/safe_to_lie_down",
+    save("safe_to_lie_down"), latched))
+subscriptions.append(node.create_subscription(
     BmsStatus, "/mi_desktop_48_b0_2d_7a_fe_40/bms_status",
     save_battery, qos_profile_sensor_data))
+
+
+def save_motion_status(message):
+    values["motion_id"] = str(message.motion_id)
+    values["motion_progress"] = str(message.order_process_bar)
+    values["motion_switch_status"] = str(message.switch_status)
+
+
+subscriptions.append(node.create_subscription(
+    MotionStatus, "/mi_desktop_48_b0_2d_7a_fe_40/motion_status",
+    save_motion_status, qos_profile_sensor_data))
 
 enable_motion = "unknown"
 parameter_client = node.create_client(GetParameters, "/mi_dog_real/get_parameters")
@@ -286,13 +302,12 @@ if event:
 deadline = time.monotonic() + 5.0
 while time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=0.1)
-    supervisor_ready = all(key in values for key in supervisor_keys)
-    battery_ready = all(key in values for key in battery_keys)
-    if supervisor_ready and battery_ready and (
+    display_ready = all(key in values for key in display_keys)
+    if display_ready and (
             not event or time.monotonic() > deadline - 4.0):
         break
 
-for key in supervisor_keys + battery_keys:
+for key in display_keys:
     print(f"{key}={values.get(key, '<missing>')}")
 
 node.destroy_node()

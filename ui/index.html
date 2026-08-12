@@ -57,6 +57,21 @@
       </div>
     </section>
 
+    <section class="panel video-panel">
+      <div class="panel-title">
+        <div><p class="kicker">远程视觉</p><h2>头部 RGB 实时画面</h2></div>
+        <div class="video-actions">
+          <span class="lock" id="videoRate">未开启</span>
+          <button class="ghost" id="videoToggle">开启视频</button>
+        </div>
+      </div>
+      <div class="video-shell">
+        <div id="videoPlaceholder">通过 SSH 连接后点击“开启视频”</div>
+        <img id="cameraStream" alt="CyberDog 2 头部 RGB 实时画面">
+      </div>
+      <p class="hint">源相机为 640×480、10 fps 配置；本机既有测量约 8.37–9.46 fps。UI 使用单条 SSH 长连接和 JPEG 转发，实际帧率会显示在右上角。</p>
+    </section>
+
     <section class="two-column">
       <section class="panel">
         <div class="panel-title">
@@ -64,6 +79,11 @@
           <span class="lock" id="jogLock">默认锁定</span>
         </div>
         <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足电量 ≥30%、未接充电线、enable_motion=True 和 run_allowed=true。物理测试建议从 ≥50% 开始。</p>
+        <div class="posture-row">
+          <button class="posture stand" data-posture="stand">起立</button>
+          <button class="posture lie" data-posture="lie-down">安全趴下</button>
+        </div>
+        <p class="hint posture-hint">起立/趴下调用原厂姿态动作，不要求比赛运动总开关；但要求电量达标、未充电、已暂停/等待且运行许可为 false。趴下还必须通过地面与稳定性许可。</p>
         <div class="jog-pad">
           <button data-jog="turn-left">↶ 左转</button>
           <button data-jog="forward">↑ 前进</button>

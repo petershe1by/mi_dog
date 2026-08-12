@@ -6,6 +6,10 @@
   let busy = false;
   let refreshInFlight = false;
   let batteryAllowsMotion = false;
+  let postureControlsReady = false;
+  let lieDownReady = false;
+  let videoActive = false;
+  let videoMetricsTimer = null;
 
   const fields = {
     service_active: document.getElementById("service"),
@@ -32,7 +36,10 @@
       const requestsMotion = button.dataset.action === "start" ||
         button.id === "continueStage" ||
         (button.dataset.jog && button.dataset.jog !== "stop");
-      button.disabled = value || (requestsMotion && !batteryAllowsMotion);
+      const requestsPosture = Boolean(button.dataset.posture);
+      const postureBlocked = requestsPosture && (
+        !postureControlsReady || (button.dataset.posture === "lie-down" && !lieDownReady));
+      button.disabled = value || (requestsMotion && !batteryAllowsMotion) || postureBlocked;
     });
   }
 
@@ -59,6 +66,10 @@
       values.wired_charging === "false" && values.power_normal === "true";
     const jogReady = batteryAllowsMotion && values.enable_motion === "True" &&
       values.run_allowed === "true";
+    postureControlsReady = batteryAllowsMotion &&
+      ["DOWN_WAITING", "PAUSED"].includes(values.state) && values.run_allowed === "false";
+    lieDownReady = postureControlsReady && values.safe_to_lie_down === "true" &&
+      values.safety_reason === "ready";
     const jogLock = document.getElementById("jogLock");
     jogLock.textContent = jogReady ? "调试移动已放行" : "调试移动锁定";
     jogLock.className = `lock ${jogReady ? "unlocked" : ""}`;
@@ -121,11 +132,77 @@
     }
   }
 
+  async function posture(actionName) {
+    if (busy || !postureControlsReady) return;
+    if (actionName === "lie-down" && !lieDownReady) return;
+    const label = actionName === "stand" ? "起立" : "安全趴下";
+    if (!window.confirm(`确认执行“${label}”？请确保机器狗周围无人、无充电线且地面安全。`)) return;
+    setBusy(true);
+    stamp(`发送姿态操作：${label}`);
+    try {
+      const result = await request("/api/posture", "POST", { action: actionName });
+      stamp(`${result.ok ? "姿态操作完成" : "姿态操作被拒绝"}：${result.stdout || result.stderr}`);
+    } catch (error) {
+      stamp(`姿态操作失败：${error.message}`);
+    } finally {
+      setBusy(false);
+      await refresh(true);
+    }
+  }
+
+  async function refreshVideoMetrics() {
+    if (!videoActive) return;
+    try {
+      const metrics = await request("/api/camera/metrics");
+      const rate = document.getElementById("videoRate");
+      rate.textContent = metrics.active ? `${Number(metrics.fps).toFixed(1)} fps` : "正在连接";
+      rate.className = `lock ${metrics.active ? "unlocked" : ""}`;
+    } catch (error) {
+      document.getElementById("videoRate").textContent = "视频状态异常";
+    }
+  }
+
+  function stopVideo(message = "视频已停止") {
+    videoActive = false;
+    const image = document.getElementById("cameraStream");
+    image.removeAttribute("src");
+    image.classList.remove("visible");
+    document.getElementById("videoPlaceholder").hidden = false;
+    document.getElementById("videoToggle").textContent = "开启视频";
+    document.getElementById("videoRate").textContent = "未开启";
+    document.getElementById("videoRate").className = "lock";
+    if (videoMetricsTimer !== null) window.clearInterval(videoMetricsTimer);
+    videoMetricsTimer = null;
+    if (message) stamp(message);
+  }
+
+  function startVideo() {
+    videoActive = true;
+    const image = document.getElementById("cameraStream");
+    document.getElementById("videoPlaceholder").hidden = true;
+    document.getElementById("videoToggle").textContent = "停止视频";
+    document.getElementById("videoRate").textContent = "正在连接";
+    image.classList.add("visible");
+    image.src = `/api/camera/stream?token=${encodeURIComponent(token)}&nonce=${Date.now()}`;
+    image.onerror = () => {
+      if (videoActive) stopVideo("视频连接失败或已断开");
+    };
+    videoMetricsTimer = window.setInterval(refreshVideoMetrics, 2000);
+    refreshVideoMetrics();
+    stamp("开启头部 RGB 视频");
+  }
+
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => action(button.dataset.action));
   });
   document.querySelectorAll("[data-jog]").forEach((button) => {
     button.addEventListener("click", () => jog(button.dataset.jog));
+  });
+  document.querySelectorAll("[data-posture]").forEach((button) => {
+    button.addEventListener("click", () => posture(button.dataset.posture));
+  });
+  document.getElementById("videoToggle").addEventListener("click", () => {
+    if (videoActive) stopVideo(); else startVideo();
   });
   document.getElementById("continueStage").addEventListener("click", () => {
     action("continue-stage", Number(document.getElementById("stageSelect").value));
