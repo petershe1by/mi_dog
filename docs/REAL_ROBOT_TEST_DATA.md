@@ -93,6 +93,20 @@
 收到 0 帧。正式无运动服务随后连续报告 `camera=1 lidar=1 pose=1; no motion output`。
 这些测试不构成非零运动验收。
 
+## USB/Type-C 只读能力盘点
+
+日期：2026-08-12。没有插接设备、切换角色或修改 sysfs。
+
+- `dmesg`：`tegra-xusb 3610000.xhci: USB2 port 0 has OTG_CAP`。
+- `/sys/class/udc/3550000.xudc` 存在，最大速率为 super-speed，未连接时 current speed unknown。
+- configfs 已配置 `ncm.usb0`、`rndis.usb0`、`acm.GS0` 和 `mass_storage.0` gadget 功能。
+- `extcon0` 同时报 `USB=0`、`USB_HOST=0`；`usb0` 为 NO-CARRIER 并挂在 `l4tbr0`。
+- xHCI host 总线及内部 USB2/USB3 Hub、RealSense 可见，但仍不能证明哪个外部 Type-C 是 Host。
+
+结论：真机至少具备一个 OTG/device 控制器，和铁蛋一的 download/device 思路相符；现有软件
+证据不能把该控制器或 host 总线逐一映射到 CyberDog 2 的三个外部 Type-C，因此实体急停接线
+仍未解锁。
+
 ## 足端与姿态动作
 
 | 条件 | 结果 | 等级 |

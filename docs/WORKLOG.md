@@ -224,6 +224,10 @@
   `enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、急停 true、`input_missing`。
 - 用户确认正式架构允许无网线、无 Wi-Fi、狗内置主控独立运行；场地可能存在网络，但程序
   不依赖。三个 Type-C 暂按铁蛋一接口定义参考，CyberDog 2 三口映射仍作为实体接线前置项。
+- 按铁蛋一思路完成无插接只读盘点：Tegra 内核报告 USB2 port 0 `OTG_CAP`，存在
+  `3550000.xudc`，configfs 配置 NCM/RNDIS/ACM/mass-storage gadget；当前 USB/USB_HOST 状态
+  均为 0，`usb0` 无 carrier。该证据只能确认 OTG/device 能力，不能把它映射到三个外部口，
+  因此没有恢复 HID 正式服务或尝试插接。
 
 ## 如何继续记录
 
