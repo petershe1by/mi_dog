@@ -277,6 +277,12 @@
   `EMERGENCY_STOP/run_allowed=false`，最终重启并恢复 stage 1 `DOWN_WAITING/false`。
 - UI 批处理重启改用 `sudo -n`：当前没有限权免密规则时立即失败且服务不变，不会等待密码。
   仅限该 unit 的 NOPASSWD 配置因属于持久权限扩大，等待用户明确批准。
+- 最终只读审计 `READ_ONLY_AUDIT=PASS`。部署清单
+  `deployment_manifest_20260812T182338+0800.txt` 绑定 `356289b`，SHA256 为
+  `40dedf8e319f1a18ff1f0fde3a182ac7f12f0b41f85746c41b8eb62b324cf450`；新 supervisor
+  二进制 SHA256 为 `52084d5f14450072f2ae39cff98db7ba3409b35dc3b6f4afc066ca455e83d20e`。
+- 最终 UI 回归覆盖 HTML/CSS/JS、health、真实 status、非零移动拒绝、未授权重启快速失败、
+  错误令牌 403 和非法 action 400；最终真机保持 stage 1 `DOWN_WAITING/run_allowed=false`。
 
 ## 如何继续记录
 

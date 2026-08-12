@@ -113,6 +113,11 @@ NOPASSWD systemctl 规则；未批准时会快速失败，不会挂起或改变�
   `8140aa4817ebe9b9438325003ad2be641e622d28a8b66ca18195373f93f92e4a`；服务 active、四节点
   单实例、`enable_motion=False`、`manage_dialogue=False`、`DOWN_WAITING`、
   `run_allowed=false`，并记录 Type-C、离线、电脑操作及“不要求额外急停/语音”的冻结字段。
+- 当前 UI/赛段选择部署清单：`deployment_manifest_20260812T182338+0800.txt`，
+  `source_commit=356289b`，SHA256 为
+  `40dedf8e319f1a18ff1f0fde3a182ac7f12f0b41f85746c41b8eb62b324cf450`；新 supervisor
+  二进制 SHA256 为 `52084d5f14450072f2ae39cff98db7ba3409b35dc3b6f4afc066ca455e83d20e`，
+  四节点单实例且最终为 `DOWN_WAITING/stage=1/run_allowed=false`。
 
 ## 当前阻塞项
 

@@ -61,6 +61,9 @@
 ```
 
 STOP 会锁存 `EMERGENCY_STOP`，需要重启服务才能回到 `DOWN_WAITING`；服务重启绝不自动继续。
+UI 后端使用非交互式 `sudo -n`，不会弹出或保存 sudo 密码。要让“重启进程”真正一键执行，
+还需用户明确批准一条只允许重启 `mi-dog-real-sensor.service` 的限权 NOPASSWD 规则；未配置时
+按钮会立即报告需要密码，服务保持不变。XTerminal 中仍可交互输入 sudo 密码完成重启。
 
 ## 故障回退
 
