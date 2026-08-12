@@ -9,6 +9,7 @@
 - [`docs/REAL_ROBOT_RUNBOOK.md`](docs/REAL_ROBOT_RUNBOOK.md)：比赛与日常真机操作手册。
 - [`docs/COMPETITION_DAY_CHECKLIST.md`](docs/COMPETITION_DAY_CHECKLIST.md)：比赛日流程和规则边界。
 - [`docs/REAL_ROBOT_TEST_DATA.md`](docs/REAL_ROBOT_TEST_DATA.md)：真机全部保留测量数据。
+- [`docs/PENDING_REAL_ROBOT_TESTS.md`](docs/PENDING_REAL_ROBOT_TESTS.md)：尚未完成的真机测试与实现任务单。
 - [`docs/ARCHITECTURE_AND_FILE_MAP.md`](docs/ARCHITECTURE_AND_FILE_MAP.md)：架构、接口和文件位置。
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：下一步与最终完成条件。
 

@@ -299,8 +299,8 @@
   改为每次新会话先发送零速度 START，再发送 DATA；命令超时或 supervisor 撤权发送 END，且
   撤权时清除旧命令，重新放行不能恢复旧速度。
 - ARM64 增量构建用时 2 分 3 秒并通过。新增 `/mi_dog_test/servo_sequence/...` 隔离验收，三轮
-  均得到 START→DATA；命令超时和撤权均得到 END；重新放行但无新命令时只有 END；10 项断言
-  全部通过（11 项断言）。测试从未连接真实 `motion_servo_cmd`，不等于物理运控验收。
+  均得到 START→DATA；命令超时和撤权均得到 END；重新放行但无新命令时只有 END；11 项断言
+  全部通过。测试从未连接真实 `motion_servo_cmd`，不等于物理运控验收。
 - 启动脚本的相机保活检查从不存在样本的 `/image` 别名修正为本机实际动态话题
   `/mi_desktop_48_b0_2d_7a_fe_40/image`。进一步确认真机 Galactic 不支持原脚本使用的
   `ros2 topic echo --once`；最终改为 Python `SensorDataQoS` 单帧探针并保留 12 秒外部超时，
@@ -317,6 +317,17 @@
   START 拒绝、80% 启动、运行中 20% 暂停、恢复不自启、显式 CONTINUE 和充电暂停，全部通过。
   初版探针三次在创建测试进程前因 rclpy 只读属性命名冲突退出；改用 `_subscriptions` 后通过，
   锚定检查确认没有隔离 supervisor 残留。
+
+## 2026-08-12 推送前：待测事项集中备注
+
+- 新增 `PENDING_REAL_ROBOT_TESTS.md`，将后续工作明确分为“已实现只缺物理验收”“感知测试未
+  完成”“功能尚未实现”和“赛事流程待确认”，并使用可勾选任务防止隔离测试被误记为真机完成。
+- 冻结本轮最终部署证据：提交 `c66efee`，清单
+  `deployment_manifest_20260812T223646+0800.txt`，SHA256
+  `ec7da7af2e03e6da1e7074c7631b8dffac97c8f1fd794a1afee498de85cad80a`。
+- 当前最后实测电量 17%，BMS 虽报告有线充电但电量未上升。正式服务保持
+  `enable_motion=False`、`min_battery_soc=30`、`DOWN_WAITING/run_allowed=false`；充电恢复前
+  不执行物理运动测试。
 
 ## 如何继续记录
 

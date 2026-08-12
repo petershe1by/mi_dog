@@ -120,8 +120,15 @@ NOPASSWD 规则；UI API 的 STOP→重启→新 supervisor→`DOWN_WAITING/fals
   `40dedf8e319f1a18ff1f0fde3a182ac7f12f0b41f85746c41b8eb62b324cf450`；新 supervisor
   二进制 SHA256 为 `52084d5f14450072f2ae39cff98db7ba3409b35dc3b6f4afc066ca455e83d20e`，
   四节点单实例且最终为 `DOWN_WAITING/stage=1/run_allowed=false`。
+- 当前最终安全部署清单：`deployment_manifest_20260812T223646+0800.txt`，
+  `source_commit=c66efee`，清单 SHA256 为
+  `ec7da7af2e03e6da1e7074c7631b8dffac97c8f1fd794a1afee498de85cad80a`；12 个部署文件哈希
+  全部通过。实效值为 `enable_motion=False`、`min_battery_soc=30`、`DOWN_WAITING`、
+  `run_allowed=false`，且只允许精确重启本项目 unit 的限权 sudo 生效。
 
 ## 当前阻塞项
+
+可执行勾选项统一维护在 [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)，以下为摘要：
 
 1. 官方 `SERVO_START/DATA/END` 已完成 ARM64 隔离话题验收，但尚未在防护工装上连接真实
    运控话题验证物理停止、暂停/重启和通信中断。

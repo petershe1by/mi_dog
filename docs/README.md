@@ -9,10 +9,11 @@
 4. [比赛控制 UI](COMPETITION_UI.md)：一键操作、赛段选择、调试移动安全门和 XTerminal/SSH。
 5. [组委会确认单](ORGANIZER_CONFIRMATION.md)：电脑操作、端口、离线架构及待确认恢复细节的记录。
 6. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
-6. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
-7. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
-8. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
-9. [路线图](ROADMAP.md)：最终目标、下一步、完成条件和安全顺序。
+7. [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)：需要补测、尚未实现和现场确认的可勾选任务。
+8. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
+9. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
+10. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
+11. [路线图](ROADMAP.md)：最终目标、下一步、完成条件和安全顺序。
 
 现有专题文档：
 
