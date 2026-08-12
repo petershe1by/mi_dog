@@ -94,6 +94,10 @@ if [[ -n "${MI_DOG_SSH_IDENTITY:-}" ]]; then
 fi
 
 if [[ "$action" == restart ]]; then
+  # A restart must revoke the supervisor permission before any process exits.
+  # STOP is idempotent and leaves the checkpointed stage intact; the service
+  # restart then returns the supervisor to DOWN_WAITING without auto-resuming.
+  "$0" --target "$target" stop
   restart_command='supervisor_pattern="^/home/mi/mi_dog_ws/install/mi_dog_real/lib/mi_dog_real/mi_dog_supervisor_node "
      old_supervisor="$(pgrep -f "$supervisor_pattern" | head -n 1 || true)"
      SUDO_PLACEHOLDER systemctl restart mi-dog-real-sensor.service &&
@@ -154,7 +158,13 @@ import time
 import rclpy
 from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from protocol.msg import BmsStatus
+from rclpy.qos import (
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from std_msgs.msg import Bool, Int32, String
 
 event, stage_arg = sys.argv[1:]
@@ -171,6 +181,15 @@ latched = QoSProfile(
 )
 values = {}
 subscriptions = []
+supervisor_keys = ("state", "stage", "run_allowed", "safety_reason")
+battery_keys = (
+    "battery_percent",
+    "battery_voltage_v",
+    "battery_temp_c",
+    "battery_health",
+    "wired_charging",
+    "power_normal",
+)
 
 
 def save(key):
@@ -178,6 +197,15 @@ def save(key):
         value = message.data
         values[key] = str(value).lower() if isinstance(value, bool) else str(value)
     return callback
+
+
+def save_battery(message):
+    values["battery_percent"] = str(message.batt_soc)
+    values["battery_voltage_v"] = f"{message.batt_volt / 1000.0:.3f}"
+    values["battery_temp_c"] = str(message.batt_temp)
+    values["battery_health"] = str(message.batt_health)
+    values["wired_charging"] = str(message.power_wired_charging).lower()
+    values["power_normal"] = str(message.power_normal).lower()
 
 
 subscriptions.append(node.create_subscription(
@@ -189,6 +217,9 @@ subscriptions.append(node.create_subscription(
 subscriptions.append(node.create_subscription(
     String, "/mi_dog_real/supervisor/lie_down_safety_reason",
     save("safety_reason"), latched))
+subscriptions.append(node.create_subscription(
+    BmsStatus, "/mi_desktop_48_b0_2d_7a_fe_40/bms_status",
+    save_battery, qos_profile_sensor_data))
 
 enable_motion = "unknown"
 parameter_client = node.create_client(GetParameters, "/mi_dog_real/get_parameters")
@@ -243,15 +274,18 @@ if event:
 deadline = time.monotonic() + 5.0
 while time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=0.1)
-    if len(values) == 4 and (not event or time.monotonic() > deadline - 4.0):
+    supervisor_ready = all(key in values for key in supervisor_keys)
+    battery_ready = all(key in values for key in battery_keys)
+    if supervisor_ready and battery_ready and (
+            not event or time.monotonic() > deadline - 4.0):
         break
 
-for key in ("state", "stage", "run_allowed", "safety_reason"):
+for key in supervisor_keys + battery_keys:
     print(f"{key}={values.get(key, '<missing>')}")
 
 node.destroy_node()
 rclpy.shutdown()
-if len(values) != 4:
+if not all(key in values for key in supervisor_keys):
     raise SystemExit("Timed out reading supervisor state")
 expected_state = {
     "START": "RUNNING",

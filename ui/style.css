@@ -39,10 +39,11 @@ h2 { margin: 2px 0 0; font-size: 21px; }
 .badge.online { color: var(--green); background: rgba(118, 220, 143, .09); border-color: rgba(118, 220, 143, .38); }
 .badge.offline { color: var(--red); background: rgba(255, 93, 104, .08); border-color: rgba(255, 93, 104, .35); }
 
-.status-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+.status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
 .status-grid article { min-height: 88px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(16, 27, 34, .86); }
 .status-grid span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 .status-grid strong { font-size: 16px; word-break: break-word; }
+.status-grid article.wide { grid-column: span 2; }
 
 .panel { border: 1px solid var(--line); background: rgba(16, 27, 34, .92); border-radius: 18px; padding: 20px; box-shadow: 0 16px 45px rgba(0,0,0,.18); }
 .primary-panel { margin-bottom: 16px; }

@@ -65,6 +65,7 @@ files=(
   "$workspace/scripts/run_sensor_gate.sh"
   "$workspace/scripts/capture_deployment_manifest.sh"
   "/etc/systemd/system/mi-dog-real-sensor.service"
+  "/etc/sudoers.d/mi-dog-competition-ui"
 )
 
 for file in "${files[@]}"; do

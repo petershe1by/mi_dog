@@ -12,6 +12,9 @@
     stage: document.getElementById("stage"),
     run_allowed: document.getElementById("runAllowed"),
     enable_motion: document.getElementById("motionEnabled"),
+    battery_percent: document.getElementById("batteryPercent"),
+    wired_charging: document.getElementById("wiredCharging"),
+    battery_temp_c: document.getElementById("batteryTemp"),
     safety_reason: document.getElementById("reason"),
   };
 
@@ -30,7 +33,13 @@
 
   function render(values, ok) {
     Object.entries(fields).forEach(([key, element]) => {
-      element.textContent = values[key] ?? "—";
+      let value = values[key] ?? "—";
+      if (value !== "—" && key === "battery_percent") value = `${value}%`;
+      if (value !== "—" && key === "battery_temp_c") value = `${value} °C`;
+      if (key === "wired_charging") {
+        value = value === "true" ? "是" : value === "false" ? "否" : "—";
+      }
+      element.textContent = value;
     });
     const connected = ok && values.service_active === "active";
     const badge = document.getElementById("connectionBadge");

@@ -284,6 +284,28 @@
 - 最终 UI 回归覆盖 HTML/CSS/JS、health、真实 status、非零移动拒绝、未授权重启快速失败、
   错误令牌 403 和非法 action 400；最终真机保持 stage 1 `DOWN_WAITING/run_allowed=false`。
 
+## 2026-08-12 后续：限权一键重启、BMS UI 与隔离伺服时序
+
+- 用户批准持久化但严格限定的 sudo 规则。安装
+  `/etc/sudoers.d/mi-dog-competition-ui`，内容仅允许用户 `mi` 免密执行
+  `/bin/systemctl restart mi-dog-real-sensor.service`；临时文件和安装文件均经 `visudo -cf`
+  通过，最终权限为 `root:root 0440`，`sudo -n -l` 未显示其他 NOPASSWD 命令。
+- 重启控制在 systemd 操作前先发送 supervisor `STOP`。真实 UI API 验收先得到
+  `EMERGENCY_STOP/run_allowed=false`，随后报告 `supervisor_ready=new_process`，最后只读状态为
+  `DOWN_WAITING/stage=1/run_allowed=false`。正式服务全程 `enable_motion=False` 且有线充电闭锁。
+- 状态 API 订阅真实 `protocol/msg/BmsStatus`，UI 新增电量、有线充电和电池温度。验收样本为
+  19%、约 21.1 V、37°C、健康度 99、`power_wired_charging=true/power_normal=true`。
+- 官方真机接口明确 `MotionServoCmd.SERVO_START=0`、`SERVO_DATA=1`、`SERVO_END=2`。运动适配器
+  改为每次新会话先发送零速度 START，再发送 DATA；命令超时或 supervisor 撤权发送 END，且
+  撤权时清除旧命令，重新放行不能恢复旧速度。
+- ARM64 增量构建用时 2 分 3 秒并通过。新增 `/mi_dog_test/servo_sequence/...` 隔离验收，三轮
+  均得到 START→DATA；命令超时和撤权均得到 END；重新放行但无新命令时只有 END；10 项断言
+  全部通过（11 项断言）。测试从未连接真实 `motion_servo_cmd`，不等于物理运控验收。
+- 启动脚本的相机保活检查从不存在样本的 `/image` 别名修正为本机实际动态话题
+  `/mi_desktop_48_b0_2d_7a_fe_40/image`，避免服务重启时误调用相机启动服务。
+- 仍未执行任何真实非零运动：本轮电量仅约 19% 且正在有线充电。后续必须在电量充足、拔除
+  充电线并具备防护工装时，先做真实话题零速度/停止链，再做低速移动。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、

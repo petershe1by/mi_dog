@@ -8,7 +8,7 @@
 | ARM64 构建 | `mi_dog_real` 在狗上 Galactic/`protocol 1.0.0` 构建 | 通过 |
 | 开机无运动服务 | systemd active，配置固定 `enable_motion=false` | 通过 |
 | 电脑结构化操作 | `status/start/continue/pause/stop/restart`；无比赛人工运动参数 | 基础链通过 |
-| 本地比赛 UI | localhost+随机令牌；状态、START/PAUSE/STOP、赛段继续和移动闭锁 | API 真机通过；一键重启待限权 sudo 批准 |
+| 本地比赛 UI | localhost+随机令牌；状态/BMS、START/PAUSE/STOP、赛段继续和移动闭锁 | API 真机通过；限权一键重启通过 |
 | 专用 SSH/XTerminal | Ed25519 批处理 status；XTerminal 可用 `mi@192.168.44.1:22` | 通过 |
 | 赛段选择 | 等待/暂停态选择 1..6、持久化、重启不自动运行 | ARM64 隔离 10 项及正式 stage 2/4 流程通过 |
 | 部署版本清单 | 单进程检查、实时参数、状态及关键文件 SHA256 | 通过 |
@@ -37,7 +37,7 @@
 | Type-C 定义 | 三口为 `UDisk`、`charge`、`download`，物理插接按机身标识 | 已确认 |
 | 电脑暂停/重启停止链 | PAUSE 得到 `PAUSED/false`；重启得到 `DOWN_WAITING/false` | 事件/重启通过，运动 watchdog 待测 |
 | UI 调试移动闭锁 | 正式 `enable_motion=False` 时前进返回码 3；STOP 零脉冲可发送 | 通过，非零运动未批准 |
-| 零速度官方时序 | `SERVO_START/DATA/END` 可重复记录 | 未完成 |
+| 零速度官方时序 | 官方常量 `0/1/2`；隔离话题三轮 START→DATA，超时/撤权 END | ARM64 隔离 11 项通过；真实运控话题待工装验收 |
 | 非零运动适配 | 完整安全链和停止 watchdog | 未批准 |
 | 相机/定位比赛感知 | 替换 Gazebo 真值 | 未完成 |
 | 六个真机赛段 | 分别物理验收 | 未开始 |

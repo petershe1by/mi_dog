@@ -21,7 +21,7 @@
 浏览器打开 `http://127.0.0.1:8765/`。服务默认只监听本机回环地址，写操作还要求每次启动随机
 生成的页面令牌，不暴露到场地网络。UI 提供：
 
-- 实时服务、supervisor、赛段、运行许可、运动总开关和安全原因；
+- 实时服务、supervisor、赛段、运行许可、运动总开关、电量、充电状态、电池温度和安全原因；
 - 一键 START、PAUSE、STOP（失能）和服务重启；
 - 选择赛段 1..6 并发送 CONTINUE；赛段选择只允许在 `DOWN_WAITING/PAUSED`，会先持久化
   检查点，选择本身不会开放运动许可；
@@ -61,9 +61,10 @@
 ```
 
 STOP 会锁存 `EMERGENCY_STOP`，需要重启服务才能回到 `DOWN_WAITING`；服务重启绝不自动继续。
-UI 后端使用非交互式 `sudo -n`，不会弹出或保存 sudo 密码。要让“重启进程”真正一键执行，
-还需用户明确批准一条只允许重启 `mi-dog-real-sensor.service` 的限权 NOPASSWD 规则；未配置时
-按钮会立即报告需要密码，服务保持不变。XTerminal 中仍可交互输入 sudo 密码完成重启。
+UI 后端使用非交互式 `sudo -n`，不会弹出或保存 sudo 密码。真机已安装仓库中的
+`systemd/mi-dog-competition-ui.sudoers`，只允许 `mi` 免密重启
+`mi-dog-real-sensor.service`，不授予其他免密命令。2026-08-12 真机 API 验收确认重启前先
+STOP，随后产生新 supervisor 进程，并最终回到 `DOWN_WAITING/run_allowed=false`。
 
 ## 故障回退
 

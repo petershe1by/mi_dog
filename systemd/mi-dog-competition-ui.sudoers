@@ -1,0 +1,2 @@
+# Allow the competition UI to restart only its own sensor/supervisor service.
+mi ALL=(root) NOPASSWD: /bin/systemctl restart mi-dog-real-sensor.service

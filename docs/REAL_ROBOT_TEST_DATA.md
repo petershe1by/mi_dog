@@ -87,7 +87,7 @@ RealSense 进程，但客户端等待响应超时，`/image` 无发布；正式�
 - 本地 UI 真实 API 依次验证 status、PAUSE、选择赛段2并继续、前进拒绝和 STOP；STOP 后为
   `EMERGENCY_STOP/stage=2/run_allowed=false`。最终已重启恢复赛段1安全等待。
 - UI 批处理重启使用 `sudo -n`；未配置限权 sudo 时立即以“需要密码”失败，0 秒返回且服务未变。
-  一键重启仍待用户明确批准仅限该 systemd unit 的 NOPASSWD 规则。
+  这是批准前的负向基线；批准后的正向结果见本文件 2026-08-12 限权重启记录。
 | `/pose_filtered`、`dog_pose`、`tracking_pose_transformed` | 均 0/6.02 s | 2026-08-12 只读计数，B |
 | BMS | 约 1 Hz | 现场观察，B |
 | `contactEstimate[4]` | 约 50 Hz | LCM 桥，B |

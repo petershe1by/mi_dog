@@ -220,7 +220,9 @@ ros2 run mi_dog_real mi_dog_real_node --ros-args --params-file \
 
 先执行 `ros2 topic list`，确认并按实际版本覆盖 `camera_topic`、`lidar_topic`、`pose_topic`。本机固件使用动态命名空间；`config/this_robot_sensor_only.yaml` 记录了 2026-08-05 实测映射。相机当前未激活，因此首次测试不把相机作为安全就绪条件。确认雷达和姿态数据、急停、站立状态及安全场地前，不得开启运动。
 
-当前只批准传感器模式。虽然消息 ABI 已按真机修正，运动模式的 `SERVO_START/DATA/END` 时序仍需零速度现场验证，因此不得设置 `enable_motion=true`。
+当前只批准传感器模式。官方消息常量和 ARM64 隔离话题的
+`SERVO_START/DATA/END` 时序已经验证，但真实运控话题的物理停止链仍需在防护工装上完成，
+因此不得设置 `enable_motion=true`。
 
 ## 受控运动（当前锁定）
 

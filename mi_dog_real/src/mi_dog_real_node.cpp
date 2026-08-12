@@ -25,8 +25,9 @@ using namespace std::chrono_literals;
 
 namespace {
 constexpr char kArmToken[] = "I_UNDERSTAND_REAL_ROBOT_RISK";
-constexpr int32_t kServoCommand = 1;
-constexpr int32_t kServoStop = 2;
+constexpr int32_t kServoStart = protocol::msg::MotionServoCmd::SERVO_START;
+constexpr int32_t kServoCommand = protocol::msg::MotionServoCmd::SERVO_DATA;
+constexpr int32_t kServoStop = protocol::msg::MotionServoCmd::SERVO_END;
 constexpr int32_t kSlowGait = 303;
 constexpr int32_t kVisualCommandSource = 2;
 
@@ -251,6 +252,10 @@ class MiDogRealNode final : public rclcpp::Node {
         [this](std_msgs::msg::Bool::ConstSharedPtr allowed) {
           supervisor_run_allowed_ = allowed->data;
           last_supervisor_run_allowed_ = now();
+          if (!allowed->data) {
+            command_ = geometry_msgs::msg::Twist{};
+            command_valid_ = false;
+          }
         });
     race_enabled_pub_ = create_publisher<std_msgs::msg::Bool>(
         race_enabled_topic, rclcpp::QoS(1).transient_local().reliable());
@@ -424,6 +429,7 @@ class MiDogRealNode final : public rclcpp::Node {
       if (!stop_sent_) RCLCPP_WARN(get_logger(), "Safety gate started stop heartbeat.");
     }
     stop_sent_ = true;
+    servo_session_active_ = false;
   }
 
   void on_timer() {
@@ -500,6 +506,13 @@ class MiDogRealNode final : public rclcpp::Node {
                            front_clearance_m_, front_stop_distance_m_);
       return;
     }
+    if (!servo_session_active_) {
+      motion_pub_->publish(make_command(kServoStart));
+      servo_session_active_ = true;
+      stop_sent_ = false;
+      RCLCPP_INFO(get_logger(), "Servo session started with a zero-velocity START frame.");
+      return;
+    }
     motion_pub_->publish(make_command(kServoCommand));
     stop_sent_ = false;
   }
@@ -519,6 +532,7 @@ class MiDogRealNode final : public rclcpp::Node {
   bool manage_dialogue_{false};
   bool voice_enabled_{true};
   bool stop_sent_{false};
+  bool servo_session_active_{false};
   bool emergency_stop_{false};
   bool supervisor_run_allowed_{false};
   bool image_valid_{false};

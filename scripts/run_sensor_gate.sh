@@ -14,8 +14,9 @@ export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
 mkdir -p /home/mi/mi_dog_ws/state
 
 camera_service=/mi_desktop_48_b0_2d_7a_fe_40/camera_service
+camera_topic=/mi_desktop_48_b0_2d_7a_fe_40/image
 camera_active=false
-if timeout 4s ros2 topic echo /image --once >/dev/null 2>&1; then
+if timeout 4s ros2 topic echo "$camera_topic" --once >/dev/null 2>&1; then
   camera_active=true
   echo "Camera stream was already active; preserving it across service restart."
 else
@@ -26,7 +27,7 @@ else
   if grep -q 'result=0' <<< "$camera_response"; then
     camera_active=true
     echo "Camera stream enabled at 640x480, 10 fps."
-  elif timeout 4s ros2 topic echo /image --once >/dev/null 2>&1; then
+  elif timeout 4s ros2 topic echo "$camera_topic" --once >/dev/null 2>&1; then
     camera_active=true
     echo "Camera stream became active even though the service response timed out."
   fi
