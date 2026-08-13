@@ -400,6 +400,11 @@
 - 修复在 ARM64 上 1 分 59 秒构建通过；隔离 `/mi_dog_test` 回归新增三类零步高断言并全部通过。
   真机最终保持站立、`PAUSED/run_allowed=false`，无临时适配器残留。零步高修复仍需新的现场
   确认后重新连接真实话题验收。
+- 修复提交并推送为 `4dc93f0`。随后按 STOP→限权 systemd 重启加载新二进制，最终回到
+  `DOWN_WAITING/run_allowed=false` 且 `enable_motion=False`。部署清单
+  `deployment_manifest_20260813T140604+0800.txt` 的 SHA256 为
+  `1f9dab0bc7b30225df56e3ef299cfa41306f0fdd0961cc0a6fe8cc885b0c47da`。该重启只证明失能部署
+  和冷等待策略，不能替代活动零速会话中的重启 END 验收。
 
 ## 如何继续记录
 

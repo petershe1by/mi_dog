@@ -422,6 +422,11 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
 - 修复后 ARM64 构建 1 分 59 秒通过，隔离话题回归新增 START/静止 DATA/END 零步高断言并全部
   通过。修复尚未重新连接真实话题验收，非零移动继续禁止。原始摘要见
   `docs/evidence/2026-08-13_real_zero_servo_attempt.txt`。
+- 修复提交 `4dc93f0` 已通过 STOP→服务重启加载；正式配置仍为 `enable_motion=False`，重启后
+  `DOWN_WAITING/run_allowed=false`。部署清单为
+  `deployment_manifest_20260813T140604+0800.txt`，SHA256
+  `1f9dab0bc7b30225df56e3ef299cfa41306f0fdd0961cc0a6fe8cc885b0c47da`；新 real 节点 SHA256
+  为 `dba6509599d9690c25591ef52e4f644e8e40bd68ef945cdc487ae06ae19e19e0`。
 
 ## 尚未取得的数据
 

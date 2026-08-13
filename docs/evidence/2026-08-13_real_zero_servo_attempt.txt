@@ -49,3 +49,12 @@ Not yet accepted:
 - The zero-step-height fix has not yet been retested on the real motion topic.
 - No nonzero jog, autonomous course motion, or new posture command was attempted
   after the observed stepping.
+
+Deployment after fix:
+- Formal service restart used STOP first and returned to DOWN_WAITING/run_allowed=false.
+- enable_motion remained False; no temporary adapter was running.
+- Manifest: /home/mi/mi_dog_ws/state/deployment_manifest_20260813T140604+0800.txt
+- Manifest SHA256: 1f9dab0bc7b30225df56e3ef299cfa41306f0fdd0961cc0a6fe8cc885b0c47da
+- source_commit=4dc93f0
+- Installed mi_dog_real_node SHA256:
+  dba6509599d9690c25591ef52e4f644e8e40bd68ef945cdc487ae06ae19e19e0
