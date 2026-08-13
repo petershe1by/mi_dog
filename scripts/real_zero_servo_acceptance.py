@@ -22,10 +22,11 @@ from rcl_interfaces.srv import GetParameters
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import Bool, String
+from std_msgs.msg import Bool, Float32MultiArray, String
 
 
 ACK = "I_ACKNOWLEDGE_REAL_ZERO_MOTION"
+CANARY = os.environ.get("MI_DOG_ZERO_CANARY", "0") == "1"
 NS = "/mi_desktop_48_b0_2d_7a_fe_40"
 COMMAND_TOPIC = "/mi_dog_test/real_zero/safe_cmd_vel"
 MOTION_TOPIC = f"{NS}/motion_servo_cmd"
@@ -96,6 +97,7 @@ class Probe(Node):
         self.motion_status_samples = []
         self.odom = None
         self.frames = []
+        self.foot_contacts = []
         self.command_pub = self.create_publisher(Twist, COMMAND_TOPIC, 10)
         self.operator_pub = self.create_publisher(String, OPERATOR_TOPIC, 10)
         self.create_subscription(
@@ -115,6 +117,11 @@ class Probe(Node):
         self.create_subscription(
             MotionServoCmd, MOTION_TOPIC,
             lambda message: self.frames.append((time.monotonic(), message)), 10)
+        self.create_subscription(
+            Float32MultiArray, "/mi_dog_real/foot_contact_estimate",
+            lambda message: self.foot_contacts.append(
+                (time.monotonic(), list(message.data))),
+            rclpy.qos.qos_profile_sensor_data)
 
     def on_motion_status(self, message):
         self.motion_status = message
@@ -250,7 +257,7 @@ def main():
             raise RuntimeError("supervisor refused START")
 
         first_index = len(probe.frames)
-        probe.spin_for(0.8, publish_zero=True)
+        probe.spin_for(0.25 if CANARY else 0.8, publish_zero=True)
         first = probe.frames[first_index:]
         results["real_topic_start_then_data"] = has_start_then_data(first)
         results["real_topic_start_data_zero"] = all_zero([
@@ -258,35 +265,39 @@ def main():
             if frame[1].cmd_type in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
         ])
 
-        timeout_index = len(probe.frames)
-        timeout_started = time.monotonic()
-        probe.spin_for(0.9)
-        timeout_frames = probe.frames[timeout_index:]
-        timeout_end = next(
-            (stamp for stamp, message in timeout_frames
-             if message.cmd_type == MotionServoCmd.SERVO_END), None)
-        results["watchdog_sent_end"] = timeout_end is not None
-        results["watchdog_end_within_0_50s"] = (
-            timeout_end is not None and timeout_end - timeout_started <= 0.50)
+        timeout_frames = []
+        second = []
+        if not CANARY:
+            timeout_index = len(probe.frames)
+            timeout_started = time.monotonic()
+            probe.spin_for(0.9)
+            timeout_frames = probe.frames[timeout_index:]
+            timeout_end = next(
+                (stamp for stamp, message in timeout_frames
+                 if message.cmd_type == MotionServoCmd.SERVO_END), None)
+            results["watchdog_sent_end"] = timeout_end is not None
+            results["watchdog_end_within_0_50s"] = (
+                timeout_end is not None and timeout_end - timeout_started <= 0.50)
 
-        if probe.state == "PAUSED":
-            probe.spin_for(1.0)
-            probe.event("CONTINUE")
-            results["supervisor_rearmed_after_watchdog"] = probe.wait_until(
-                lambda: probe.state == "RUNNING" and probe.run_allowed is True, 5.0)
-        else:
-            results["supervisor_rearmed_after_watchdog"] = (
-                probe.state == "RUNNING" and probe.run_allowed is True)
-        if not results["supervisor_rearmed_after_watchdog"]:
-            raise RuntimeError("supervisor could not rearm after watchdog END")
+            if probe.state == "PAUSED":
+                probe.spin_for(1.0)
+                probe.event("CONTINUE")
+                results["supervisor_rearmed_after_watchdog"] = probe.wait_until(
+                    lambda: probe.state == "RUNNING" and probe.run_allowed is True, 5.0)
+            else:
+                results["supervisor_rearmed_after_watchdog"] = (
+                    probe.state == "RUNNING" and probe.run_allowed is True)
+            if not results["supervisor_rearmed_after_watchdog"]:
+                raise RuntimeError("supervisor could not rearm after watchdog END")
 
-        second_index = len(probe.frames)
-        probe.spin_for(0.6, publish_zero=True)
-        second = probe.frames[second_index:]
-        results["second_session_start_then_data"] = has_start_then_data(second)
+            second_index = len(probe.frames)
+            probe.spin_for(0.6, publish_zero=True)
+            second = probe.frames[second_index:]
+            results["second_session_start_then_data"] = has_start_then_data(second)
+
+        pause_index = len(probe.frames)
         pause_time = time.monotonic()
         probe.event("PAUSE")
-        pause_index = len(probe.frames)
         probe.spin_for(0.8, publish_zero=True)
         paused = probe.frames[pause_index:]
         pause_end = next(
@@ -326,8 +337,18 @@ def main():
             (final_position.y - initial_xyz[1]) ** 2)
         odom_z_delta = final_position.z - initial_xyz[2]
         results["odom_xy_delta_under_3cm"] = odom_xy_delta < 0.03
+        session_contacts = [
+            values for stamp, values in probe.foot_contacts
+            if first and stamp >= first[0][0] and len(values) == 4
+        ]
+        results["foot_contact_samples_sufficient"] = len(session_contacts) >= 40
+        results["all_foot_contacts_positive"] = (
+            bool(session_contacts) and
+            all(value > 0.0 for values in session_contacts for value in values)
+        )
         print(f"initial_battery_percent={int(probe.bms.batt_soc)}")
         print(f"initial_wired_charging={str(probe.bms.power_wired_charging).lower()}")
+        print(f"canary_mode={str(CANARY).lower()}")
         print(f"first_cmd_types={frame_types(first)}")
         print(f"timeout_cmd_types={frame_types(timeout_frames)}")
         print(f"second_cmd_types={frame_types(second)}")
@@ -336,6 +357,14 @@ def main():
             probe.motion_status_samples[-80:]))
         print(f"odom_xy_delta_m={odom_xy_delta:.6f}")
         print(f"odom_z_delta_m={odom_z_delta:.6f}")
+        print(f"foot_contact_samples={len(session_contacts)}")
+        if session_contacts:
+            print("foot_contact_minima=" + str([
+                min(values[index] for values in session_contacts)
+                for index in range(4)]))
+            print("foot_contact_maxima=" + str([
+                max(values[index] for values in session_contacts)
+                for index in range(4)]))
     except Exception as error:
         acceptance_error = str(error)
         print(f"acceptance_error={error}", file=sys.stderr)
@@ -372,17 +401,22 @@ def main():
         "supervisor_started",
         "real_topic_start_then_data",
         "real_topic_start_data_zero",
-        "watchdog_sent_end",
-        "watchdog_end_within_0_50s",
-        "supervisor_rearmed_after_watchdog",
-        "second_session_start_then_data",
         "pause_state_and_permission_revoked",
         "pause_sent_end_within_0_50s",
         "no_data_after_pause_end",
         "all_captured_velocities_zero",
         "all_captured_step_heights_zero",
         "odom_xy_delta_under_3cm",
+        "foot_contact_samples_sufficient",
+        "all_foot_contacts_positive",
     }
+    if not CANARY:
+        required_results.update({
+            "watchdog_sent_end",
+            "watchdog_end_within_0_50s",
+            "supervisor_rearmed_after_watchdog",
+            "second_session_start_then_data",
+        })
     passed = (
         acceptance_error is None and
         required_results == set(results) and

@@ -58,3 +58,20 @@ Deployment after fix:
 - source_commit=4dc93f0
 - Installed mi_dog_real_node SHA256:
   dba6509599d9690c25591ef52e4f644e8e40bd68ef945cdc487ae06ae19e19e0
+
+Zero-step-height real-topic retest:
+- Short canary: PASS in telemetry; START, four zero DATA frames and PAUSE END;
+  all vel_des and step_height values zero; XY delta 0.000290 m. User observed
+  no stepping, foot movement or translation.
+- Full watchdog + PAUSE run: PASS in telemetry; all velocities and step heights
+  zero; watchdog END and PAUSE END each within 0.50 sec; XY delta 0.012600 m.
+- User observed body sway and was unsure whether a foot lifted slightly during
+  the full run. Physical acceptance therefore remains NOT PASSED despite the
+  telemetry result.
+- Five-second post-test static baseline: 255 contact samples, all four channels
+  constant at 0.5; 226 odom samples, max XY delta 0.000784 m; motion status
+  remained switch_status=0,motion_id=112.
+- The acceptance collector is being extended to record all four 50 Hz contact
+  estimates during each future real gait session. Contact telemetry cannot
+  override an observed physical lift; the next run needs close foot observation
+  or a protective rig.
