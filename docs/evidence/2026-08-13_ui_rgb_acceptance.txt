@@ -1,0 +1,68 @@
+Test window: 2026-08-13 12:57-13:05 Asia/Shanghai
+Local source commit: 492566e
+Robot target: mi@192.168.44.1
+Motion commands sent: none
+
+Safety state after test:
+service_active=active
+enable_motion=False
+min_battery_soc=30
+state=DOWN_WAITING
+stage=1
+run_allowed=false
+safety_reason=wired_charging_motion_inhibited
+battery_percent=99
+battery_voltage_v=24.681
+battery_temp_c=37
+wired_charging=true
+
+Two-minute localhost UI SSH-MJPEG run:
+duration_seconds=120.0
+frames=709
+final_fps=6.42
+sample_fps_range=6.03..6.83
+megabytes=17.53
+megabits_per_second=1.26
+client_bytes=17563648
+reader_error=null
+
+Robot resource samples during stream:
+stream_transcoder_cpu_percent=19.6..35.9
+stream_transcoder_rss_kb=128812..131668
+camera_server_cpu_percent=33.7..34.9
+camera_server_rss_kb=202300..206876
+system_memory_used_mb=2712..2754
+system_memory_available_mb=4802..4853
+mi_dog_real_node_cpu_percent=15.2..15.4
+mi_dog_supervisor_cpu_percent=12.9..13.3
+Note: load average was still elevated after robot boot, so it is not an idle baseline.
+
+Thermal sample after stream (tegrastats):
+AO=47.5C GPU=47C PMIC=50C AUX=48.5C CPU=51.5C thermal=48.8..48.95C
+
+Reconnect run:
+window_seconds=30.0
+stream_elapsed_seconds=21.1
+estimated_startup_seconds=8.91
+frames=131
+fps_range=6.02..6.60
+megabits_per_second=1.25
+reader_error=null
+Immediate post-disconnect pgrep found no SSH-MJPEG transcoder process.
+
+Running UI safety checks:
+maintenance_controls=false
+POST /api/jog forward -> HTTP 403
+POST /api/posture stand -> HTTP 403
+Camera stream token was one-time and access logs displayed token=<redacted>.
+
+Read-only audit:
+READ_ONLY_AUDIT=PASS
+Service active/enabled; four mi_dog nodes each single-instance; enable_motion=False;
+DOWN_WAITING/run_allowed=false; estop guard input_missing. No ROS publications,
+service restarts, file writes on the robot, posture actions, or motion commands were used.
+
+Still not measured:
+- true camera-to-browser end-to-end visual latency;
+- autonomy loop/topic frequencies under streaming with a synchronized trace;
+- physical posture, zero-speed servo, watchdog, STOP, or nonzero motion behavior.
