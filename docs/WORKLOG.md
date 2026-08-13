@@ -420,6 +420,25 @@
   隔离回归确认 END-only 静止、非零 START/DATA、watchdog、撤权和陈旧命令行为均正确。新的
   真实 END-only 验收尚未执行。
 
+## 2026-08-13：静止命令 END-only 真机验收通过
+
+- 提交 `5fd1a42` 已部署：静止 `safe_cmd_vel` 不再进入 303，只保持 END；只有真实非零输出才
+  创建 START/DATA 会话，减速归零后立即 END。
+- 真实话题验收捕获 8 个 END、0 个 START/DATA；全部速度和步高为零。运控状态始终为 112，
+  90 组四足接触四路均为 0.5，odom XY 变化仅 0.018 mm；脚本输出
+  `REAL_IDLE_COMMAND_ACCEPTANCE=PASS`，最终 PAUSED 且临时进程无残留。
+- 用户对最终 END-only 实机验收明确确认没有离地；更早的 canary 数据也说明 contactEstimate
+  在 303 切换时的瞬时零值不能单独代表真实离地。最终 END-only 设计完全避免了该步态切换。
+- 最终只读状态为 51%、21.854 V、39°C、未充电、`enable_motion=False`、
+  `PAUSED/run_allowed=false`、正式节点单实例。因电量接近建议的 50% 起测线，没有继续非零移动、
+  姿态或活动会话停止链。
+- 部署清单 `deployment_manifest_20260813T143321+0800.txt`，SHA256
+  `02c075b2a0c3da95499632602fdcda7b8d41b8f8038be2a063f2dd8043034a76`，记录
+  `source_commit=5fd1a42`；安装的 real 节点 SHA256 为
+  `4433e7071d805003fba9222f7e88145156491d7c99e49af4cac8faa0112ec788`。
+- 下一次先充至建议 70% 以上，再拔线确认空场；剩余停止链必须在有界低速非零会话中测停车
+  延迟和距离，不能再用静止命令模拟活动会话。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、

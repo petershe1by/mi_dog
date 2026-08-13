@@ -90,3 +90,36 @@ Foot-visible canary:
   nonzero request still produced START/DATA with 0.05 m step height; timeout,
   permission revoke and stale-command behavior still produced the expected END.
 - New real END-only acceptance is pending deployment and physical observation.
+
+END-only real-topic acceptance after deployment:
+- Source/deployment commit: 5fd1a42.
+- Battery before acceptance: 53%; charge cable removed; power_normal=true.
+- The real motion topic captured eight frames, all cmd_type=END (2); no START or
+  DATA frame was emitted and every velocity/step-height field was zero.
+- Motion status remained switch_status=0,motion_id=112 throughout and never
+  entered walking motion 303.
+- 90 foot-contact samples were captured; all four channel minima were 0.5.
+- XY odometry delta was 0.000018 m.
+- The formal node remained enable_motion=False and the bounded acceptance
+  process exited; final supervisor state was PAUSED/run_allowed=false.
+- Acceptance script result: REAL_IDLE_COMMAND_ACCEPTANCE=PASS.
+- User physical observation for the END-only run: no foot left the ground. This
+  agrees with the telemetry proof that no gait transition occurred; no later
+  physical movement test was attempted.
+
+Final read-only audit:
+- Battery 51%, 21.854 V, 39 C, health 99; wired_charging=false,
+  power_normal=true.
+- Service active; enable_motion=False; PAUSED/run_allowed=false;
+  motion_id=112, progress=100, switch_status=0.
+- Exactly one formal mi_dog_real_node remained and no temporary acceptance
+  adapter remained.
+- Deployment manifest:
+  /home/mi/mi_dog_ws/state/deployment_manifest_20260813T143321+0800.txt
+- Manifest SHA256:
+  02c075b2a0c3da95499632602fdcda7b8d41b8f8038be2a063f2dd8043034a76
+- Installed mi_dog_real_node SHA256:
+  4433e7071d805003fba9222f7e88145156491d7c99e49af4cac8faa0112ec788
+- No further action test was permitted at 51%; recharge before the next
+  nonzero, posture, PAUSE-under-motion, watchdog-under-motion or restart-under-
+  motion acceptance.

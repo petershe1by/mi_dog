@@ -7,22 +7,25 @@ Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代�
 
 ## 当前禁止条件
 
-- 当前最后实测电量 99%，高于 supervisor 的 30% 硬门；物理运动测试仍建议从至少 50% 开始。
-- BMS 当前报告 `power_wired_charging=true`。任何物理姿态或运动测试前仍必须拔除 `charge` 线，
-  并再次确认 BMS 已变为未充电；99% 电量不会覆盖有线充电闭锁。
+- 当前最后实测电量 51%，仅略高于建议起测线；本轮停止全部新动作测试。下次应先充至至少
+  70%，再拔除 `charge` 线并复核 BMS 为未充电。
+- BMS 当前报告 `wired_charging=false`；这只记录本轮状态，不替代下次动作前的重新检查。
 - 正式配置仍为 `enable_motion=false`。不得为了让 UI 移动键生效而直接修改 YAML 绕过安全门。
 - 真实运控测试时必须拔除充电线，并使用四脚离地架、防滑空场或厂家认可的防护工装。
 
 ## A. 已实现，只缺物理验收
 
-- [ ] 在真实 `motion_servo_cmd` 上确认静止 `safe_cmd_vel` 只保持零速/零步高 END，不发送
+- [x] 在真实 `motion_servo_cmd` 上确认静止 `safe_cmd_vel` 只保持零速/零步高 END，不发送
   START/DATA、不进入 `motion_id=303`、四足接触不重置且无位移。原“用零速度
   START→DATA→END 验证停止链”的假设已被真机否定：303 模式即使速度和步高为零仍会切换重心，
-  因而不能作为无动作测试。新设计已通过 ARM64 隔离回归，待真实 END-only 验收。证据见
+  因而不能作为无动作测试。真实 END-only 验收取得 8 个 END、无 START/DATA，运控始终为
+  `motion_id=112`，90 组四足接触均为 0.5，odom XY 变化 0.000018 m，最终 PAUSED。证据见
   `docs/evidence/2026-08-13_real_zero_servo_attempt.txt`。
-- [ ] 零速度会话中验证 UI/电脑 PAUSE 立即撤销 `run_allowed` 并发送 END。
-- [ ] 零速度会话中验证服务重启先 STOP，重启后保持 `DOWN_WAITING/run_allowed=false`。
-- [ ] 零速度会话中验证 0.30 秒命令 watchdog 和 supervisor 0.50 秒许可超时。
+- [ ] 在有界低速非零会话中验证 UI/电脑 PAUSE 立即撤销 `run_allowed`、发送 END，并测量停车距离。
+- [ ] 在有界低速非零会话中验证服务重启先 STOP，重启后保持
+  `DOWN_WAITING/run_allowed=false`；静止部署重启已通过，但不能代替活动会话。
+- [ ] 在有界低速非零会话中验证 0.30 秒命令 watchdog 和 supervisor 0.50 秒许可超时，并测量
+  停止延迟与停车距离。
 - [ ] 断开电脑链路时验证狗内置主控仍独立运行，且停止行为不依赖电脑在线。
 - [ ] 电量充足、拔除充电线后，逐个验证六向 0.25 秒低速调试脉冲和 STOP；保存里程计、视频、
   实际位移和停止距离，不一次连续点击。

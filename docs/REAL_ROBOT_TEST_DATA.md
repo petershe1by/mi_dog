@@ -428,6 +428,21 @@ supervisor 进入 `PAUSED`，离线提示音于 `16:33:45` 完成；期间持续
   `1f9dab0bc7b30225df56e3ef299cfa41306f0fdd0961cc0a6fe8cc885b0c47da`；新 real 节点 SHA256
   为 `dba6509599d9690c25591ef52e4f644e8e40bd68ef945cdc487ae06ae19e19e0`。
 
+## 2026-08-13 静止命令 END-only 真机验收
+
+- 部署提交 `5fd1a42` 后，真实 `motion_servo_cmd` 静止验收捕获 8 帧且全部为 END；没有
+  START/DATA，全部速度和步高字段为零。
+- 运控全程保持 `motion_id=112, switch_status=0`，未进入 303；90 组四足接触的四路最小值
+  均为 0.5；odom XY 改变量为 0.000018 m；用户现场确认没有足端离地。
+- 脚本最终输出 `REAL_IDLE_COMMAND_ACCEPTANCE=PASS`，正式节点始终
+  `enable_motion=False`，退出后为 `PAUSED/run_allowed=false`，临时验收进程无残留。
+- 最终只读复查：51%、21.854 V、39°C、健康度 99、未插充电线、BMS 正常；正式运控状态
+  仍为 112。电量仅略高于建议起测线，因此没有继续任何非零、姿态或活动停止链测试。
+- 最终部署清单：`deployment_manifest_20260813T143321+0800.txt`，SHA256
+  `02c075b2a0c3da95499632602fdcda7b8d41b8f8038be2a063f2dd8043034a76`；安装的
+  `mi_dog_real_node` SHA256 为
+  `4433e7071d805003fba9222f7e88145156491d7c99e49af4cac8faa0112ec788`。
+
 ## 尚未取得的数据
 
 - 相机比赛目标数据集和识别精度；
