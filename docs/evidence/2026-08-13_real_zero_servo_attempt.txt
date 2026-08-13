@@ -1,0 +1,51 @@
+Test window: 2026-08-13 13:42-14:03 Asia/Shanghai
+Starting local commit: efb419d
+Robot target: mi@192.168.44.1
+Field: user confirmed charge cable removed and field safe
+Initial BMS: 95%, wired_charging=false, power_normal=true
+Formal service: enable_motion=False; temporary separately named adapter only
+
+Attempt 0 (no real motion output):
+- Robot Python rejected subprocess.Popen(text=...).
+- The acceptance script incorrectly printed PASS from its completed preflight subset.
+- Fixed to universal_newlines=True and to require the complete result-key set with no exception.
+
+Attempt 1 (real topic, original 0.05 m step height):
+- Captured START then zero-velocity DATA; every captured velocity was zero.
+- Initial mode transition raised the body from lying to standing; user observed no translation.
+- The first collector serialized callbacks and misplaced END frames across phase boundaries.
+- Final state PAUSED/run_allowed=false; temporary adapter exited.
+
+Attempt 2 (collector fixed, original 0.05 m step height):
+- Supervisor entered RUNNING and then locked PAUSED after a runtime input transition.
+- Only END frames were observed in the measurement phases.
+- XY odometry delta 0.000317 m; user observed no movement.
+
+Attempt 3 (controller stabilization fixed, original 0.05 m step height):
+- Real START -> zero-velocity DATA -> watchdog END succeeded.
+- Explicit re-arm -> START -> zero-velocity DATA -> PAUSE END succeeded.
+- All captured vel_des values were zero.
+- Watchdog and PAUSE END were each observed within 0.50 seconds.
+- XY odometry delta was 0.040369 m.
+- User observed in-place stepping and some displacement, so acceptance is FAIL.
+- Final state PAUSED/run_allowed=false; no temporary adapter remained.
+
+Root cause:
+- The adapter populated step_height=[0.05,0.05] on START, DATA and END regardless
+  of velocity. The installed Xiaomi motion map labels motion_id 303 as slow walking,
+  and its 303 preset uses step_height=[0.05,0.05]. The installed OFF preset uses
+  step_height=[0.0,0.0]. Zero vel_des therefore did not mean no foot lift.
+
+Fix prepared:
+- START, END and a truly idle DATA frame now use step_height=[0.0,0.0].
+- Configured nonzero step height is attached only while a translational or yaw
+  command remains nonzero (including a bounded deceleration ramp).
+- ARM64 colcon build passed in 1 min 59 sec.
+- Isolated /mi_dog_test regression passed START/DATA/END ordering, watchdog,
+  permission revoke, stale-command behavior, all-zero velocity, and new all-zero
+  step-height assertions. It did not publish to the real motion topic.
+
+Not yet accepted:
+- The zero-step-height fix has not yet been retested on the real motion topic.
+- No nonzero jog, autonomous course motion, or new posture command was attempted
+  after the observed stepping.

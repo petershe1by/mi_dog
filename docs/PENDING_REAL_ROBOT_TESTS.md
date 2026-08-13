@@ -16,7 +16,10 @@ Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代�
 ## A. 已实现，只缺物理验收
 
 - [ ] 在防护工装上连接真实 `motion_servo_cmd`，只发送零速度
-  `SERVO_START → SERVO_DATA → SERVO_END`，保存实际话题和运控状态记录。
+  `SERVO_START → SERVO_DATA → SERVO_END`，保存实际话题和运控状态记录。2026-08-13 首次
+  真实测试发现原实现即使 `vel_des=0` 仍携带 0.05 m 步高，现场出现踏步和约 4 cm odom 位移；
+  已改为静止帧零步高并通过 ARM64 隔离回归，但必须重新真机验收后才能勾选。证据见
+  `docs/evidence/2026-08-13_real_zero_servo_attempt.txt`。
 - [ ] 零速度会话中验证 UI/电脑 PAUSE 立即撤销 `run_allowed` 并发送 END。
 - [ ] 零速度会话中验证服务重启先 STOP，重启后保持 `DOWN_WAITING/run_allowed=false`。
 - [ ] 零速度会话中验证 0.30 秒命令 watchdog 和 supervisor 0.50 秒许可超时。

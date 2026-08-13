@@ -131,6 +131,15 @@ def zero_velocity(messages, command_type):
     )
 
 
+def zero_step_height(messages, command_type):
+    selected = [message for message in messages if message.cmd_type == command_type]
+    return bool(selected) and all(
+        len(message.step_height) == 2 and
+        all(abs(value) <= 1e-9 for value in message.step_height)
+        for message in selected
+    )
+
+
 def main():
     process = None
     rclpy.init()
@@ -162,6 +171,10 @@ def main():
             first_session, MotionServoCmd.SERVO_START)
         results["zero_data_frame_zero_velocity"] = zero_velocity(
             first_session, MotionServoCmd.SERVO_DATA)
+        results["start_frame_zero_step_height"] = zero_step_height(
+            first_session, MotionServoCmd.SERVO_START)
+        results["zero_data_frame_zero_step_height"] = zero_step_height(
+            first_session, MotionServoCmd.SERVO_DATA)
         results["command_timeout_sends_end"] = (
             MotionServoCmd.SERVO_END in types(timeout_phase))
         results["second_session_restarts_start_then_data"] = ordered_start_data(
@@ -179,6 +192,11 @@ def main():
         ]
         results["end_frames_zero_velocity"] = bool(all_end_frames) and all(
             len(message.vel_des) == 3 and all(abs(value) <= 1e-9 for value in message.vel_des)
+            for message in all_end_frames
+        )
+        results["end_frames_zero_step_height"] = bool(all_end_frames) and all(
+            len(message.step_height) == 2 and
+            all(abs(value) <= 1e-9 for value in message.step_height)
             for message in all_end_frames
         )
 

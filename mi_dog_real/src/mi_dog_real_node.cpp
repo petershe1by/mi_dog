@@ -414,8 +414,14 @@ class MiDogRealNode final : public rclcpp::Node {
     output_yaw_rps_ = yaw;
     message.vel_des = {static_cast<float>(forward), static_cast<float>(lateral),
                        static_cast<float>(yaw)};
-    message.step_height = {static_cast<float>(step_height_m_),
-                           static_cast<float>(step_height_m_)};
+    // A walking gait can lift its feet even when vel_des is exactly zero.  Do
+    // not attach a non-zero step height to START, END, or an idle DATA frame;
+    // the real robot otherwise steps in place and can drift while "stopped".
+    const bool translating_or_turning = command_type == kServoCommand &&
+        (std::abs(forward) > 1e-9 || std::abs(lateral) > 1e-9 || std::abs(yaw) > 1e-9);
+    const float commanded_step_height = translating_or_turning ?
+        static_cast<float>(step_height_m_) : 0.0F;
+    message.step_height = {commanded_step_height, commanded_step_height};
     return message;
   }
 
