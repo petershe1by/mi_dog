@@ -94,7 +94,7 @@ class Probe(Node):
                 return True
         return False
 
-    def sample(self, seconds, *, allowed=None, command=False):
+    def sample(self, seconds, *, allowed=None, command=None):
         start_index = len(self.samples)
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
@@ -102,8 +102,10 @@ class Probe(Node):
                 allowed_message = Bool()
                 allowed_message.data = allowed
                 self.allowed_pub.publish(allowed_message)
-            if command:
-                self.command_pub.publish(Twist())
+            if command is not None:
+                message = Twist()
+                message.linear.x, message.linear.y, message.angular.z = command
+                self.command_pub.publish(message)
             rclpy.spin_once(self, timeout_sec=0.02)
             time.sleep(0.02)
         return [message for _, message in self.samples[start_index:]]
@@ -155,26 +157,37 @@ def main():
         results["isolated_subscribers_ready"] = probe.wait_for_connections()
 
         initial = probe.sample(0.5, allowed=False)
-        first_session = probe.sample(0.9, allowed=True, command=True)
-        timeout_phase = probe.sample(0.8, allowed=True, command=False)
-        second_session = probe.sample(0.8, allowed=True, command=True)
-        revoke_phase = probe.sample(0.6, allowed=False, command=False)
-        stale_after_reallow = probe.sample(0.4, allowed=True, command=False)
-        third_session = probe.sample(0.8, allowed=True, command=True)
+        idle_request = probe.sample(0.5, allowed=True, command=(0.0, 0.0, 0.0))
+        first_session = probe.sample(0.9, allowed=True, command=(0.05, 0.0, 0.0))
+        timeout_phase = probe.sample(0.8, allowed=True)
+        second_session = probe.sample(0.8, allowed=True, command=(0.05, 0.0, 0.0))
+        revoke_phase = probe.sample(0.6, allowed=False)
+        stale_after_reallow = probe.sample(0.4, allowed=True)
+        third_session = probe.sample(0.8, allowed=True, command=(0.05, 0.0, 0.0))
 
         results["inhibited_has_no_start_or_data"] = not any(
             value in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
             for value in types(initial)
         )
+        results["idle_command_stays_ended"] = (
+            MotionServoCmd.SERVO_END in types(idle_request) and
+            not any(value in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
+                    for value in types(idle_request)))
         results["first_session_start_then_data"] = ordered_start_data(first_session)
         results["start_frame_zero_velocity"] = zero_velocity(
             first_session, MotionServoCmd.SERVO_START)
-        results["zero_data_frame_zero_velocity"] = zero_velocity(
-            first_session, MotionServoCmd.SERVO_DATA)
         results["start_frame_zero_step_height"] = zero_step_height(
             first_session, MotionServoCmd.SERVO_START)
-        results["zero_data_frame_zero_step_height"] = zero_step_height(
-            first_session, MotionServoCmd.SERVO_DATA)
+        data_frames = [
+            message for message in first_session
+            if message.cmd_type == MotionServoCmd.SERVO_DATA]
+        results["moving_data_has_positive_velocity"] = bool(data_frames) and any(
+            any(abs(value) > 1e-9 for value in message.vel_des)
+            for message in data_frames)
+        results["moving_data_has_configured_step_height"] = bool(data_frames) and all(
+            len(message.step_height) == 2 and
+            all(abs(value - 0.05) <= 1e-6 for value in message.step_height)
+            for message in data_frames)
         results["command_timeout_sends_end"] = (
             MotionServoCmd.SERVO_END in types(timeout_phase))
         results["second_session_restarts_start_then_data"] = ordered_start_data(
@@ -202,6 +215,7 @@ def main():
 
         for name, messages in (
                 ("initial", initial),
+                ("idle_request", idle_request),
                 ("first_session", first_session),
                 ("timeout", timeout_phase),
                 ("second_session", second_session),

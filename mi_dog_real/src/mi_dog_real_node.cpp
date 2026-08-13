@@ -512,6 +512,17 @@ class MiDogRealNode final : public rclcpp::Node {
                            front_clearance_m_, front_stop_distance_m_);
       return;
     }
+    const bool command_requests_motion =
+        std::abs(command_.linear.x) > 1e-9 ||
+        std::abs(command_.linear.y) > 1e-9 ||
+        std::abs(command_.angular.z) > 1e-9;
+    if (!servo_session_active_ && !command_requests_motion) {
+      // Entering gait 303 can transfer weight or lift a foot even when both
+      // velocity and step height are zero.  An idle command must therefore
+      // remain in the ended standing mode instead of opening a gait session.
+      publish_stop();
+      return;
+    }
     if (!servo_session_active_) {
       motion_pub_->publish(make_command(kServoStart));
       servo_session_active_ = true;
@@ -519,7 +530,15 @@ class MiDogRealNode final : public rclcpp::Node {
       RCLCPP_INFO(get_logger(), "Servo session started with a zero-velocity START frame.");
       return;
     }
-    motion_pub_->publish(make_command(kServoCommand));
+    auto motion_command = make_command(kServoCommand);
+    const bool output_still_moving = std::any_of(
+        motion_command.vel_des.begin(), motion_command.vel_des.end(),
+        [](float value) { return std::abs(value) > 1e-9F; });
+    if (!command_requests_motion && !output_still_moving) {
+      publish_stop();
+      return;
+    }
+    motion_pub_->publish(motion_command);
     stop_sent_ = false;
   }
 

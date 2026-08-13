@@ -75,3 +75,18 @@ Zero-step-height real-topic retest:
   estimates during each future real gait session. Contact telemetry cannot
   override an observed physical lift; the next run needs close foot observation
   or a protective rig.
+
+Foot-visible canary:
+- Zero velocity and zero step height; 68 in-session contact samples.
+- All four contact-estimate channels transiently reached 0.0 while motion status
+  entered 303, despite XY delta only 0.006683 m.
+- User closely observed the feet and explicitly confirmed that no foot left the
+  ground. Therefore contactEstimate=0 during a gait transition is not sufficient
+  evidence of physical lift on this firmware.
+- Even without physical lift, entering gait 303 causes a mode/weight transition.
+  The safer design is now: an idle Twist never emits START or DATA; it remains
+  ended. An active session emits END as soon as its deceleration reaches zero.
+- Updated isolated regression passed: idle request produced END only; isolated
+  nonzero request still produced START/DATA with 0.05 m step height; timeout,
+  permission revoke and stale-command behavior still produced the expected END.
+- New real END-only acceptance is pending deployment and physical observation.
