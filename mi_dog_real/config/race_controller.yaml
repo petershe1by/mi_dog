@@ -1,0 +1,27 @@
+/**:
+  ros__parameters:
+    # Fail closed until the real course profile has been measured and each stage
+    # has passed physical validation. The distances below are placeholders.
+    course_calibrated: false
+    camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
+    lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
+    odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
+    command_topic: "/mi_dog_real/safe_cmd_vel"
+    stage_complete_topic: "/mi_dog_real/stage_complete"
+    status_topic: "/mi_dog_real/race_controller/status"
+    run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
+    current_stage_topic: "/mi_dog_real/supervisor/current_stage"
+    sensor_timeout_sec: 0.6
+    # Conservative defaults. Measure and update distances during course walk-through.
+    stage_1.distance_m: 2.0
+    stage_1.speed_mps: 0.10
+    stage_2.distance_m: 2.0
+    stage_2.speed_mps: 0.08
+    stage_3.distance_m: 2.5
+    stage_3.speed_mps: 0.09
+    stage_4.distance_m: 2.0
+    stage_4.speed_mps: 0.08
+    stage_5.distance_m: 2.2
+    stage_5.speed_mps: 0.06
+    stage_6.distance_m: 2.0
+    stage_6.speed_mps: 0.12

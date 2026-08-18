@@ -165,14 +165,8 @@ def main():
         stale_after_reallow = probe.sample(0.4, allowed=True)
         third_session = probe.sample(0.8, allowed=True, command=(0.05, 0.0, 0.0))
 
-        results["inhibited_has_no_start_or_data"] = not any(
-            value in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
-            for value in types(initial)
-        )
-        results["idle_command_stays_ended"] = (
-            MotionServoCmd.SERVO_END in types(idle_request) and
-            not any(value in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
-                    for value in types(idle_request)))
+        results["inhibited_emits_no_servo_frames"] = not types(initial)
+        results["idle_command_emits_no_servo_frames"] = not types(idle_request)
         results["first_session_start_then_data"] = ordered_start_data(first_session)
         results["start_frame_zero_velocity"] = zero_velocity(
             first_session, MotionServoCmd.SERVO_START)
@@ -188,16 +182,14 @@ def main():
             len(message.step_height) == 2 and
             all(abs(value - 0.05) <= 1e-6 for value in message.step_height)
             for message in data_frames)
-        results["command_timeout_sends_end"] = (
-            MotionServoCmd.SERVO_END in types(timeout_phase))
+        results["command_timeout_sends_exactly_one_end"] = (
+            types(timeout_phase).count(MotionServoCmd.SERVO_END) == 1)
         results["second_session_restarts_start_then_data"] = ordered_start_data(
             second_session)
-        results["permission_revoke_sends_end"] = (
-            MotionServoCmd.SERVO_END in types(revoke_phase))
-        results["reallow_without_fresh_command_stays_ended"] = not any(
-            value in (MotionServoCmd.SERVO_START, MotionServoCmd.SERVO_DATA)
-            for value in types(stale_after_reallow)
-        )
+        results["permission_revoke_sends_exactly_one_end"] = (
+            types(revoke_phase).count(MotionServoCmd.SERVO_END) == 1)
+        results["reallow_without_fresh_command_emits_no_servo_frames"] = (
+            not types(stale_after_reallow))
         results["fresh_command_starts_third_session"] = ordered_start_data(third_session)
         all_end_frames = [
             message for message in timeout_phase + revoke_phase

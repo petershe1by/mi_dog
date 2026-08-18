@@ -81,6 +81,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     min_foot_contact_estimate_ = declare_parameter<double>(
         "min_foot_contact_estimate", 0.0);
     sensor_freshness_sec_ = declare_parameter<double>("sensor_freshness_sec", 0.5);
+    bms_freshness_sec_ = declare_parameter<double>("bms_freshness_sec", 3.0);
     stable_hold_sec_ = declare_parameter<double>("stable_hold_sec", 1.5);
     max_tilt_rad_ = declare_parameter<double>("max_tilt_deg", 25.0) * M_PI / 180.0;
     max_linear_speed_ = declare_parameter<double>("max_linear_speed", 0.03);
@@ -319,7 +320,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     const auto current_time = now();
     // BMS publishes at about 1 Hz on this robot, so it gets a wider freshness window.
     const bool bms_status_fresh = have_bms_status_ &&
-        (current_time - last_bms_status_time_).seconds() <= sensor_freshness_sec_ * 3.0;
+        (current_time - last_bms_status_time_).seconds() <= bms_freshness_sec_;
     std::string reason = "ready";
     bool raw_safe = true;
     if (!have_odometry_) {
@@ -344,9 +345,6 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     } else if (!have_motion_status_) {
       raw_safe = false;
       reason = "waiting_for_motion_status";
-    } else if ((current_time - last_motion_status_time_).seconds() > sensor_freshness_sec_) {
-      raw_safe = false;
-      reason = "stale_motion_status";
     } else if (!motion_status_healthy_) {
       raw_safe = false;
       if (motion_switch_status_ == kMotionSwitchCharging) {
@@ -406,7 +404,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   bool power_allows_motion(const rclcpp::Time &current_time) const {
     return have_bms_status_ && bms_healthy_ &&
            battery_soc_ >= min_battery_soc_ && !wired_charging_ &&
-           (current_time - last_bms_status_time_).seconds() <= sensor_freshness_sec_ * 3.0;
+           (current_time - last_bms_status_time_).seconds() <= bms_freshness_sec_;
   }
 
   bool run_inputs_allow_motion(const rclcpp::Time &current_time) const {
@@ -416,9 +414,11 @@ class MiDogSupervisorNode final : public rclcpp::Node {
     const bool motion_switch_allows_run =
         motion_switch_status_ == kMotionSwitchNormal ||
         motion_switch_status_ == kMotionSwitchTransitioning;
+    // MotionStatus is emitted on actions/state changes by this firmware, not as
+    // a heartbeat. Keep the most recent health result; a new error event revokes
+    // permission immediately.
     const bool motion_status_allows_run = have_motion_status_ && motion_errors_clear_ &&
-        motion_switch_allows_run &&
-        (current_time - last_motion_status_time_).seconds() <= sensor_freshness_sec_;
+        motion_switch_allows_run;
     return odometry_allows_run && motion_status_allows_run &&
            power_allows_motion(current_time);
   }
@@ -512,6 +512,7 @@ class MiDogSupervisorNode final : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr foot_contact_sub_;
   rclcpp::TimerBase::SharedPtr safety_timer_;
   double sensor_freshness_sec_{0.5};
+  double bms_freshness_sec_{3.0};
   double stable_hold_sec_{1.5};
   double max_tilt_rad_{0.0};
   double max_linear_speed_{0.03};

@@ -1,0 +1,42 @@
+Test date: 2026-08-15 Asia/Shanghai
+Source/deployment baseline: 51450fa / deployment_manifest_20260813T143321+0800.txt
+Corrected QoS tool SHA256: 7c9ed8f63b63db50c6e64ed3f429a15e0002ee64bdd82094a65b35c768a46461
+
+Design:
+- Formal supervisor remained PAUSED/run_allowed=false for the entire test.
+- A temporary separately named adapter subscribed to an isolated transient-local,
+  reliable permission topic and the real motion command topic.
+- The probe published bounded forward commands while deliberately stopping only the
+  isolated permission heartbeat, testing the adapter's 0.50 s permission freshness.
+- Formal service remained enable_motion=False.
+
+Preflight and negative attempt:
+- The first attempt used incompatible volatile publisher durability. DDS delivered
+  no permission message, the adapter remained inhibited, no motion session started,
+  the tool failed closed, and the read-only audit passed.
+- QoS was corrected to match the formal transient-local/reliable permission topic.
+- User explicitly approved the corrected real-motion attempt.
+
+Corrected real-topic result:
+- Battery 69%, wired_charging=false, power_normal=true; all preflight gates passed.
+- Captured START/DATA, then permission-staleness END within 0.60 s.
+- Continued forward command publication produced no DATA after the permission END.
+- Formal supervisor remained PAUSED/run_allowed=false throughout.
+- Final scripted PAUSE END was within 0.50 s and no DATA followed.
+- Odom XY delta was 0.050199 m; Z delta was -0.000596 m.
+- Motion status transitioned 303 -> 112. 114 contact samples were recorded.
+- User confirmed normal low-speed motion, timely stopping, continuous standing, and
+  no slip, abnormal foot lift, marked sway, continued walking, or abnormal sound.
+- Final read-only audit passed; four formal nodes were single-instance, the temporary
+  adapter exited, and formal enable_motion remained False.
+
+Acceptance interpretation:
+- The tool's aggregate result was FAIL because its strict XY assertion was `<0.05 m`
+  and the measured value was 0.050199 m (0.199 mm over).
+- A prior five-second stationary baseline measured up to 0.784 mm XY odom variation.
+  The overage is below that observed noise magnitude. The aggregate tool output is
+  not rewritten or represented as PASS.
+- The supervisor-permission timeout function is accepted independently because the
+  required END timing, rejection after END, measured physical stopping, user
+  observation, and final inhibited state all passed. The measured stopping/travel
+  distance remains recorded exactly as 0.050199 m.

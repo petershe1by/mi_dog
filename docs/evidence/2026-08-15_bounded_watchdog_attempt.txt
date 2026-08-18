@@ -1,0 +1,77 @@
+Test date: 2026-08-15 Asia/Shanghai
+Source/deployment baseline: 51450fa / deployment_manifest_20260813T143321+0800.txt
+Temporary watchdog tool SHA256: 7230e64fdc631bb98345a152cc0d3b6ad9f136ad797cbe0ff1769d361863703e
+
+Scope and preflight:
+- User explicitly approved one real watchdog test after the exact motion was stated.
+- Robot started stably standing in a clear field after the earlier passed canary.
+- Formal service remained enable_motion=False; temporary separately named adapter only.
+- Battery 87%, wired_charging=false, power_normal=true; initial safety inputs passed.
+
+Bounded watchdog attempt:
+- Published vx=0.05 m/s for 0.25 seconds, then stopped publishing commands.
+- Captured START and DATA, followed by watchdog END within 0.50 seconds.
+- Supervisor remained explicitly RUNNING until the scripted PAUSE.
+- Scripted PAUSE then revoked run_allowed and emitted END within 0.50 seconds;
+  no DATA was captured after the PAUSE END.
+- Odom XY delta was 0.055171 m, exceeding the predeclared 0.05 m bound.
+- Odom Z delta was 0.093842 m. Motion-status samples included IDs 102 and 111;
+  these observations require analysis and are not silently dismissed.
+- 114 foot-contact samples were captured; all four channels stayed at 0.5.
+- User reported the robot remained standing, moved normally, and stopped normally.
+- Tool result: BOUNDED_WATCHDOG_TELEMETRY=FAIL because the XY bound failed.
+
+Final safety state:
+- Read-only audit passed: service active/enabled, four formal nodes each exactly one,
+  no HID prototype, enable_motion=False, manage_dialogue=False.
+- supervisor=PAUSED, run_allowed=false, emergency_stop=true/input_missing.
+- Temporary adapter exited. No further physical test was run.
+
+Conclusion:
+- Functional evidence supports watchdog END and normal observed stopping.
+- The overall watchdog acceptance remains open because measured travel exceeded the
+  declared 5 cm bound by 0.005171 m. Analyze deceleration timing, odom baseline and
+  motion-status semantics before changing code, threshold, or rerunning.
+- Read-only inspection of the robot's installed official
+  `/opt/ros2/cyberdog/share/motion_action/preset/motion_id_map.toml` identified
+  102 as backup high-damping lie-down, 111 as recovery stand, 112 as post-walk
+  stand, and 303 as slow walk. Because the user physically observed continuous
+  standing and normal motion, the sampled 102/111 values are historical/transition
+  status rather than proof that those physical actions occurred during the canary.
+- The adapter publishes DATA while the last command remains valid, then directly
+  publishes END when the 0.30 s command-age check fails; it does not run a separate
+  deceleration ramp after timeout. The six DATA frames captured before END therefore
+  belong to the configured validity window. This explains duration but does not by
+  itself justify raising the 5 cm acceptance bound.
+- A later harness audit found that this attempt captured `initial_xyz` before
+  starting the inhibited temporary adapter. The adapter then emitted END and waited
+  1.5 s for controller stabilization before START. The reported XY/Z deltas thus
+  include that pre-motion controller/posture transition and are not a valid isolated
+  stopping-distance measurement. The attempt remains FAIL, but the failure is now
+  attributed to invalid measurement scope rather than proven excessive physical
+  stopping distance. The corrected temporary tool moves the odom baseline to after
+  supervisor RUNNING and immediately before the first forward command; SHA256
+  `7e528f2b6f830d8c70c2dec68d27d433c3f209bc43600fedf4cb1712b96aaf55`.
+
+Corrected-baseline retest:
+- User explicitly approved repeating the same vx=0.05 m/s, 0.25 s forward pulse
+  and 0.30 s command-watchdog test.
+- Battery was 81%, wired_charging=false, and all preflight safety gates passed.
+- Captured START, four initial DATA frames, six validity-window DATA frames, then
+  watchdog END. The watchdog END arrived within 0.50 s.
+- Scripted PAUSE revoked permission and emitted END within 0.50 s; no DATA followed.
+- With the baseline taken immediately before the forward command, odom XY delta was
+  0.034104 m and Z delta was -0.001086 m. Motion status transitioned 303 -> 112.
+- 114 contact samples were recorded. Transient zeros during the gait transition are
+  interpreted under the previously documented firmware limitation, not as physical
+  lift without matching observation.
+- Tool result: BOUNDED_WATCHDOG_TELEMETRY=PASS.
+- User confirmed normal short forward motion, timely stopping, continuous standing,
+  and no slip, abnormal foot lift, marked sway, continued walking, or abnormal sound.
+- Final read-only audit passed with PAUSED/run_allowed=false, formal
+  enable_motion=False, four single-instance formal nodes, and no temporary adapter.
+
+Final scope conclusion:
+- The 0.30 s command watchdog is physically and telemetrically accepted.
+- Supervisor 0.50 s permission-staleness behavior, active-session service restart,
+  computer-link loss, and other directions remain unproven.

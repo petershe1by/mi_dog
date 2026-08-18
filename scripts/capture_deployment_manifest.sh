@@ -64,7 +64,14 @@ files=(
   "$source_root/config/supervisor.yaml"
   "$source_root/config/estop_guard.yaml"
   "$source_root/config/estop_hid.yaml"
+  "$source_root/config/this_robot_competition.yaml"
+  "$source_root/config/race_controller.yaml"
+  "$source_root/launch/maintenance.launch.py"
+  "$source_root/launch/competition.launch.py"
+  "$install_root/lib/mi_dog_real/race_controller.py"
   "$workspace/scripts/run_sensor_gate.sh"
+  "$workspace/scripts/start_camera_when_stable.sh"
+  "$workspace/scripts/competition_preflight.sh"
   "$workspace/scripts/capture_deployment_manifest.sh"
   "/etc/systemd/system/mi-dog-real-sensor.service"
 )
@@ -92,7 +99,32 @@ require_single_process() {
 real_node_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_real_node" mi_dog_real_node)"
 supervisor_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_supervisor_node" mi_dog_supervisor_node)"
 bridge_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_state_bridge_node" mi_dog_state_bridge_node)"
-estop_guard_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node" mi_dog_estop_guard_node)"
+service_exec_start="$(systemctl show mi-dog-real-sensor.service -p ExecStart --value --no-pager)"
+case "$service_exec_start" in
+  *"run_sensor_gate.sh maintenance"*) launch_mode="maintenance" ;;
+  *"run_sensor_gate.sh competition"*) launch_mode="competition" ;;
+  *"run_sensor_gate.sh sensor-only"*|*"run_sensor_gate.sh"*) launch_mode="sensor-only" ;;
+  *)
+    echo "Cannot determine launch mode from ExecStart: $service_exec_start" >&2
+    exit 1
+    ;;
+esac
+
+estop_guard_pid="not_running"
+if [[ "$launch_mode" == "sensor-only" ]]; then
+  estop_guard_pid="$(require_single_process "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node" mi_dog_estop_guard_node)"
+elif pgrep -f "^$install_root/lib/mi_dog_real/mi_dog_estop_guard_node([[:space:]]|$)" >/dev/null; then
+  echo "E-stop guard must not run in $launch_mode mode without a physical input." >&2
+  exit 1
+fi
+
+race_controller_pid="not_running"
+if [[ "$launch_mode" == "competition" ]]; then
+  race_controller_pid="$(require_single_process "/usr/bin/python3 $install_root/lib/mi_dog_real/race_controller.py" mi_dog_race_controller)"
+elif pgrep -f "$install_root/lib/mi_dog_real/race_controller.py" >/dev/null; then
+  echo "Race controller must not run in $launch_mode mode." >&2
+  exit 1
+fi
 
 read_param() {
   local node="$1"
@@ -161,8 +193,12 @@ effective_manage_dialogue="$(read_param /mi_dog_real manage_dialogue)"
 effective_min_battery_soc="$(read_param /mi_dog_supervisor min_battery_soc)"
 supervisor_state="$(read_topic_once /mi_dog_real/supervisor/state string)"
 run_allowed="$(read_topic_once /mi_dog_real/supervisor/run_allowed bool)"
-emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
-estop_guard_status="$(read_topic_once /mi_dog_real/emergency_stop_guard/status string)"
+emergency_stop="not_applicable"
+estop_guard_status="not_applicable"
+if [[ "$launch_mode" == "sensor-only" ]]; then
+  emergency_stop="$(read_topic_once /mi_dog_real/emergency_stop bool volatile)"
+  estop_guard_status="$(read_topic_once /mi_dog_real/emergency_stop_guard/status string)"
+fi
 competition_ui_restart_sudo="unavailable"
 if sudo -n -l /bin/systemctl restart mi-dog-real-sensor.service >/dev/null 2>&1; then
   competition_ui_restart_sudo="allowed_exact_unit_restart"
@@ -180,17 +216,20 @@ for value in "$effective_enable_motion" "$effective_require_sensor_ready" \
 done
 
 {
-  echo "manifest_schema=mi_dog_real/v2"
+  echo "manifest_schema=mi_dog_real/v3"
   echo "captured_at=$(date --iso-8601=seconds)"
   echo "hostname=$(hostname)"
   echo "kernel=$(uname -srmo)"
   echo "workspace=$workspace"
   echo "source_commit=$source_commit"
+  echo "launch_mode=$launch_mode"
+  echo "service_exec_start=$service_exec_start"
   echo "service_active=$(systemctl is-active mi-dog-real-sensor.service 2>/dev/null || true)"
   echo "mi_dog_real_node_pid=$real_node_pid"
   echo "mi_dog_supervisor_node_pid=$supervisor_pid"
   echo "mi_dog_state_bridge_node_pid=$bridge_pid"
   echo "mi_dog_estop_guard_node_pid=$estop_guard_pid"
+  echo "mi_dog_race_controller_pid=$race_controller_pid"
   echo "ros_distro=${ROS_DISTRO:-unknown}"
   echo "ros_domain_id=${ROS_DOMAIN_ID:-unknown}"
   echo "rmw_implementation=${RMW_IMPLEMENTATION:-unknown}"

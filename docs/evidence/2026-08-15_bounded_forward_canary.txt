@@ -1,0 +1,36 @@
+Test date: 2026-08-15 Asia/Shanghai
+Source/deployment baseline: 51450fa / deployment_manifest_20260813T143321+0800.txt
+Temporary canary SHA256: f46c368e2ae8805b18beabe044a343e3b5376f3fe7fa1cbd83a4d1ec459b6f9c
+
+Preflight:
+- User confirmed a clear, non-slip field and foot visibility.
+- Official stand motion 111 returned result=true, code=0, progress=100.
+- User confirmed stable standing with all four feet normal.
+- Battery 100% before preparation and 91% at canary start; 33 C; health 99.
+- wired_charging=false and power_normal=true.
+- Formal service remained enable_motion=False; temporary separately named adapter only.
+
+Bounded real-topic canary:
+- Command was forward vx=0.05 m/s for 0.25 seconds, then PAUSE.
+- Captured cmd types were START, four DATA frames, then four END frames after PAUSE.
+- Velocity and step-height bounds passed.
+- PAUSE revoked run_allowed and produced END within 0.50 seconds.
+- No DATA was captured after the first PAUSE END.
+- Odom XY delta was 0.031935 m; Z delta was 0.010872 m.
+- 67 foot-contact samples were recorded. All channels transiently reached zero during
+  gait transition; prior real testing established that this firmware signal alone
+  cannot prove physical foot lift.
+- User observed normal short forward motion and normal stopping, with no reported
+  slip, abnormal foot lift, continued walking, marked sway, or abnormal sound.
+- Script result: BOUNDED_FORWARD_TELEMETRY=PASS; physical observation: PASS.
+
+Final read-only audit:
+- service active/enabled; four formal nodes each exactly one; HID prototype absent.
+- enable_motion=False; manage_dialogue=False.
+- supervisor=PAUSED; run_allowed=false; emergency_stop=true/input_missing.
+- READ_ONLY_AUDIT=PASS; temporary adapter exited.
+
+Scope:
+- This proves one forward canary and PAUSE-under-motion only.
+- It does not prove command watchdog, active-session service restart, computer link
+  loss, the other five directions, posture lie-down, or autonomous course motion.

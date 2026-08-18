@@ -69,6 +69,7 @@ from rclpy.qos import (
     qos_profile_sensor_data,
 )
 from std_msgs.msg import Bool, String
+from std_srvs.srv import Trigger
 
 action = sys.argv[1]
 motion_id = int(sys.argv[2])
@@ -154,13 +155,13 @@ if parameter_client.wait_for_service(timeout_sec=2.0):
                 hard_minimum_soc <= candidate <= 100):
             minimum_soc = max(hard_minimum_soc, candidate)
 
-required = {
+required_base = {
     "state", "run_allowed", "safe_to_lie_down", "safety_reason",
     "battery_percent", "wired_charging", "power_normal", "bms_faults_clear",
-    "motion_switch_status", "motion_errors_clear",
 }
+required_motion = {"motion_switch_status", "motion_errors_clear"}
 deadline = time.monotonic() + 8.0
-while not required.issubset(values) and time.monotonic() < deadline:
+while (not required_base.issubset(values) or not required_motion.issubset(values)) and time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=0.1)
 
 
@@ -171,7 +172,7 @@ def refuse(reason):
     raise SystemExit(3)
 
 
-if not required.issubset(values) or minimum_soc is None:
+if not required_base.issubset(values) or minimum_soc is None:
     refuse("safety_inputs_missing")
 if values["state"] not in ("DOWN_WAITING", "PAUSED"):
     refuse(f"supervisor_state_{values['state']}")
@@ -185,10 +186,27 @@ if not values["power_normal"]:
     refuse("power_not_normal")
 if not values["bms_faults_clear"]:
     refuse("bms_fault")
-if not values["motion_errors_clear"]:
-    refuse("motion_error")
-if values["motion_switch_status"] not in (MotionStatus.NORMAL, MotionStatus.EDAMP):
-    refuse(f"motion_switch_{values['motion_switch_status']}")
+if required_motion.issubset(values):
+    if not values["motion_errors_clear"]:
+        refuse("motion_error")
+    if values["motion_switch_status"] not in (MotionStatus.NORMAL, MotionStatus.EDAMP):
+        refuse(f"motion_switch_{values['motion_switch_status']}")
+elif action == "stand":
+    # This firmware publishes MotionStatus only around actions. Before the first
+    # posture action, use the stock read-only machine-state query instead.
+    machine_client = node.create_client(
+        Trigger, "/mi_desktop_48_b0_2d_7a_fe_40/machine_state_valget")
+    if not machine_client.wait_for_service(timeout_sec=3.0):
+        refuse("machine_state_service_unavailable")
+    machine_future = machine_client.call_async(Trigger.Request())
+    rclpy.spin_until_future_complete(node, machine_future, timeout_sec=3.0)
+    machine_response = machine_future.result() if machine_future.done() else None
+    if (machine_response is None or not machine_response.success or
+            machine_response.message.strip().lower() != "active"):
+        refuse("machine_state_not_active")
+    print("machine_state_fallback=active")
+else:
+    refuse("motion_status_missing")
 if action == "lie-down" and (
         values["safe_to_lie_down"] is not True or values["safety_reason"] != "ready"):
     refuse(f"lie_down_not_safe_{values['safety_reason']}")

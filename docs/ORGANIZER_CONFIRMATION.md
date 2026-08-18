@@ -1,13 +1,14 @@
 # 组委会与小米支持确认单
 
-更新日期：2026-08-12（Asia/Shanghai）
+更新日期：2026-08-17（Asia/Shanghai）
 
 用途：记录已经由用户按赛事现场要求确认的操作边界，以及仍需赛事方确认的恢复和计分细节。
 2026-08-12 的最新确认优先于仓库内早期摘录对“启动后不得触碰电脑”的保守解释。
 
 ## 当前安全状态
 
-- 正式真机服务保持 `enable_motion=false`，不会发布比赛运动指令。
+- 当前 maintenance/competition 适配器为 motion-enabled，但启动时 Supervisor 为
+  `DOWN_WAITING/run_allowed=false`；比赛控制器默认 `course_calibrated=false`，未标定时零输出。
 - `manage_dialogue=false`，语音不会打开自定义比赛控制入口。
 - 比赛不要求额外实体急停或语音控制；现有急停守卫和语音入口保留为闭锁的兼容代码。
 - 比赛程序全部运行在狗内置主控，不依赖网线、Wi-Fi 或场地网络。

@@ -208,8 +208,9 @@ class UiServer(ThreadingHTTPServer):
             "export ROS_DOMAIN_ID=42; "
             "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp; "
             "export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml; "
-            f"exec python3 - --topic {CAMERA_TOPIC} --max-fps 10 "
-            "--jpeg-quality 72 --max-width 640"
+            f"pkill -f '^python3 - --topic {CAMERA_TOPIC} ' >/dev/null 2>&1 || true; "
+            f"exec timeout 120s python3 - --topic {CAMERA_TOPIC} --max-fps 5 "
+            "--jpeg-quality 68 --max-width 480"
         )
         command = [
             "ssh",
@@ -276,7 +277,7 @@ class UiServer(ThreadingHTTPServer):
                 "megabytes": round(self.camera_bytes / 1_000_000.0, 2),
                 "megabits_per_second": round(megabits_per_second, 2),
                 "elapsed_seconds": round(elapsed, 1),
-                "source_limit_fps": 10,
+                "source_limit_fps": 5,
             }
 
 

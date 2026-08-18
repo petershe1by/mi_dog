@@ -1,0 +1,40 @@
+Test date: 2026-08-15 Asia/Shanghai
+Source/deployment baseline: 51450fa / deployment_manifest_20260813T143321+0800.txt
+Temporary acceptance tool SHA256: 48527df1dd799725dab1c0974656ee8ad8483a3bc151ed582f89354413212131
+
+Preflight:
+- Full power cycle cleared stale motion-controller CHARGING=14.
+- Read-only audit passed; battery was above 70%, charge cable removed, BMS normal.
+- Sensor-rate sample passed: image 9.155 Hz, scan 8.489 Hz, odom 38.949 Hz.
+- User explicitly approved one vx=0.05 m/s active session, structured STOP, and
+  restart of only mi-dog-real-sensor.service.
+- Official stand action 111 returned result=true, code=0, progress=99; user
+  confirmed stable standing.
+
+Active STOP and restart result:
+- Battery at test start was 77%, wired_charging=false, power_normal=true.
+- Formal service remained enable_motion=False; temporary separately named adapter only.
+- Captured START and four bounded DATA frames.
+- Structured STOP changed supervisor to EMERGENCY_STOP/run_allowed=false and produced
+  END within 0.50 s. No DATA was captured after the STOP END.
+- The narrowly authorized `sudo -n systemctl restart mi-dog-real-sensor.service`
+  succeeded.
+- The restarted supervisor entered DOWN_WAITING/run_allowed=false.
+- Formal enable_motion remained False after restart.
+- Continued test forward publication after restart produced END only, no DATA and no
+  automatic motion recovery.
+- Odom XY delta was 0.014769 m; Z delta was -0.006642 m.
+- Tool result: BOUNDED_STOP_RESTART_TELEMETRY=PASS.
+- User confirmed normal short forward motion, timely stopping, no motion or abnormal
+  sound during restart, and a final stable lying posture.
+
+Final audit:
+- READ_ONLY_AUDIT=PASS.
+- Service active/enabled; four formal nodes each exactly one; HID prototype absent.
+- DOWN_WAITING/run_allowed=false; enable_motion=False; manage_dialogue=False.
+- Temporary adapter exited.
+
+Scope:
+- This accepts active structured STOP followed by formal project-service restart.
+- It does not accept computer-link loss, other movement directions, autonomous
+  course motion, or restarting original Xiaomi motion-controller processes.

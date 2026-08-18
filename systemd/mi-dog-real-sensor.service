@@ -1,12 +1,12 @@
 [Unit]
-Description=Mi Dog sensor-only voice, touch, and race supervisor
+Description=Mi Dog manual maintenance stack (fail-closed until operator START)
 After=network.target
 
 [Service]
 Type=simple
 User=mi
 WorkingDirectory=/home/mi/mi_dog_ws
-ExecStart=/home/mi/mi_dog_ws/scripts/run_sensor_gate.sh
+ExecStart=/home/mi/mi_dog_ws/scripts/run_sensor_gate.sh maintenance
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGINT

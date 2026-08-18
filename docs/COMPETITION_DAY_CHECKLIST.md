@@ -49,7 +49,8 @@
 - 电量足够，比赛运行时拔掉 charge 口充电线；
 - 狗处于起点规定姿态，四周无人员、线缆和跌落风险；
 - `mi-dog-real-sensor.service=active`，正式节点单实例；
-- `manage_dialogue=false`；上场前仍为无运动验收阶段时还必须确认 `enable_motion=false`；
+- `manage_dialogue=false`、`enable_motion=true`，并由预检确认
+  `course_calibrated=true`、`DOWN_WAITING/run_allowed=false` 和空闲 Servo 0 帧；
 - 相机、雷达、odom、BMS、运控状态和检查点可读；
 - `status` 返回预期状态、赛段和 `run_allowed`；
 - UI 显示“正式比赛模式”，人工移动/姿态按钮均锁定；

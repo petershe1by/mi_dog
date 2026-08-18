@@ -4,7 +4,8 @@
 
 ## 已实现的安全边界
 
-- 默认 `enable_motion=false`：只订阅相机、雷达和姿态，绝不发布运动指令。
+- sensor-only 回滚配置为 `enable_motion=false`；当前 maintenance/competition 适配器为
+  motion-enabled，但必须取得实时 Supervisor 许可，比赛控制器默认还受课程未标定闭锁。
 - 本机 `pose_filtered` 当前只有发布端而没有样本；安全节点同时订阅实测约 45--48 Hz 的
   `odom_out` 四元数作为姿态新鲜度和倾角输入，任一来源有效即可满足姿态门。
 - 运动输出同时要求 `enable_motion=true` 和明确的 `arm_token`。
@@ -106,15 +107,16 @@
 消息会被拒绝，只有 `CONTINUE` 后才可推进。
 
 真机已安装并启用 `mi-dog-real-sensor.service`，它通过
-`scripts/run_sensor_gate.sh` 启动传感器安全门和 supervisor。该服务固定使用
-`enable_motion=false` 的配置；它开机可用，但还不能让机器狗执行六赛段动作。
+`scripts/run_sensor_gate.sh` 启动传感器安全门和 supervisor。当前 unit 使用 `maintenance`：
+`enable_motion=true`，但没有自主比赛控制器，且重启强制回到 `DOWN_WAITING/false`。比赛 launch
+包含 `race_controller.py`，其 `course_calibrated=false` 默认闭锁会在未测量课程参数时保持零输出；
+不得仅把该参数改成 true 就宣称六赛段可用。
 启动脚本优先复用已有 `/image`；未激活时才请求原厂相机服务输出 640x480、10 fps 图像，
 失败时保持服务在线并明确记录相机未启用。由于原厂 command 10 后 command 9 可能卡住，
 本服务退出/重启时不再关闭相机，整机关闭由原厂生命周期统一处理。2026-08-12 手工回放中
 该调用返回 `result=0/code=0`，8 秒取得 76 帧（约 9.46 Hz，`bgr8`），随后关闭成功。
-同一服务启动急停守卫，但不启动 HID 原型；当前没有实体输入生产者，所以它按设计保持
-`input_missing/output_asserted=true`。ARM64 隔离测试已通过启动、首次 false、按下/释放、
-超时、重连和再次按下/释放八阶段，但这不能替代实体按钮和线缆验收。
+赛事不要求额外实体急停，maintenance/competition launch 不启动急停守卫或 HID 原型；
+sensor-only 回滚 launch 仍保留守卫。其 ARM64 隔离测试结果只证明兼容代码，不是比赛前置条件。
 `lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、四足接触、控制器和 BMS 的
 只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为
 `wired_charging_motion_inhibited`。落脚面/边缘与周围空间检查完成前，仍不能连接真实

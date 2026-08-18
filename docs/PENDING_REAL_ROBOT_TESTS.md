@@ -1,34 +1,57 @@
 # 待完成真机测试清单
 
-更新日期：2026-08-13（Asia/Shanghai）
+更新日期：2026-08-17（Asia/Shanghai）
 
 本文只记录尚未完成的真机验证和实现，勾选前必须保留日志、版本、配置、视频或物理结果证据。
 Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代证据。
 
 ## 当前禁止条件
 
-- 当前最后实测电量 51%，仅略高于建议起测线；本轮停止全部新动作测试。下次应先充至至少
-  70%，再拔除 `charge` 线并复核 BMS 为未充电。
-- BMS 当前报告 `wired_charging=false`；这只记录本轮状态，不替代下次动作前的重新检查。
-- 正式配置仍为 `enable_motion=false`。不得为了让 UI 移动键生效而直接修改 YAML 绕过安全门。
+- 当前只读状态为 44%、未充电、运控状态 0，维护服务为
+  `DOWN_WAITING/run_allowed=false`。动作测试前必须拔除 `charge` 线并重新检查 BMS 和运控状态。
+- 维护/比赛适配器配置为 `enable_motion=true`，但任何真实输出同时受 Supervisor、传感器、
+  watchdog、倾角、雷达和课程标定门约束；不得直接发布运动话题或绕过这些安全门。
+- 真机比赛控制器默认 `course_calibrated=false`。在课程参数和六赛段物理结果未验证前，即使
+  Supervisor 收到 START，控制器也必须保持零输出并报告 `COURSE_UNCALIBRATED`。
 - 真实运控测试时必须拔除充电线，并使用四脚离地架、防滑空场或厂家认可的防护工装。
 
 ## A. 已实现，只缺物理验收
 
-- [x] 在真实 `motion_servo_cmd` 上确认静止 `safe_cmd_vel` 只保持零速/零步高 END，不发送
+- [x] 历史版本在真实 `motion_servo_cmd` 上确认静止 `safe_cmd_vel` 只保持零速/零步高 END，不发送
   START/DATA、不进入 `motion_id=303`、四足接触不重置且无位移。原“用零速度
   START→DATA→END 验证停止链”的假设已被真机否定：303 模式即使速度和步高为零仍会切换重心，
   因而不能作为无动作测试。真实 END-only 验收取得 8 个 END、无 START/DATA，运控始终为
   `motion_id=112`，90 组四足接触均为 0.5，odom XY 变化 0.000018 m，最终 PAUSED。证据见
   `docs/evidence/2026-08-13_real_zero_servo_attempt.txt`。
-- [ ] 在有界低速非零会话中验证 UI/电脑 PAUSE 立即撤销 `run_allowed`、发送 END，并测量停车距离。
-- [ ] 在有界低速非零会话中验证服务重启先 STOP，重启后保持
-  `DOWN_WAITING/run_allowed=false`；静止部署重启已通过，但不能代替活动会话。
-- [ ] 在有界低速非零会话中验证 0.30 秒命令 watchdog 和 supervisor 0.50 秒许可超时，并测量
-  停止延迟与停车距离。
-- [ ] 断开电脑链路时验证狗内置主控仍独立运行，且停止行为不依赖电脑在线。
-- [ ] 电量充足、拔除充电线后，逐个验证六向 0.25 秒低速调试脉冲和 STOP；保存里程计、视频、
-  实际位移和停止距离，不一次连续点击。
+- [x] 2026-08-17 修复空闲重复 END 导致原厂 `BAN_TRANS=5/3022`：无活动 Servo 会话时完全
+  静默，活动会话退出只发送一次可靠 END。2026-08-18 新版真实活动会话取得严格
+  `START=1, DATA=1, END=1`，END 后无 DATA/重复 END，STOP 后 6 秒零帧且无 BAN_TRANS/3022；
+  用户确认短距前进和停车正常。证据见 `docs/evidence/2026-08-18_single_end_real_acceptance.txt`。
+- [x] 在一次 `0.05 m/s × 0.25 s` 前进 canary 中验证电脑 PAUSE 撤销 `run_allowed`、在
+  0.50 秒内发送 END；odom XY 变化 0.031935 m，用户确认短距前进和停车正常。该结果只覆盖
+  一次前进 canary，不替代 watchdog、活动重启或六向验收。证据见
+  `docs/evidence/2026-08-15_bounded_forward_canary.txt`。
+- [x] 在 `0.05 m/s` 有界低速非零会话中验证结构化 STOP 在 0.50 秒内 END，随后限权重启
+  `mi-dog-real-sensor.service`；重启后保持 `DOWN_WAITING/run_allowed=false`、正式
+  `enable_motion=False`，继续测试前进命令只有 END。odom XY 0.014769 m，用户确认运动、停车、
+  重启和最终趴卧均正常。证据见
+  `docs/evidence/2026-08-15_active_stop_restart_acceptance.txt`。
+- [x] 在有界低速非零会话中验证 0.30 秒命令 watchdog。修正 odom 基线后的复测取得
+  XY 0.034104 m、Z -0.001086 m，watchdog END 在 0.50 秒内；用户确认正常前进、及时停车并
+  始终站立。证据见 `docs/evidence/2026-08-15_bounded_watchdog_attempt.txt`。
+- [x] 在隔离许可话题的有界低速非零会话中验证 supervisor 0.50 秒许可过期：失鲜后 0.60 秒
+  内 END，END 后持续前进命令无 DATA，用户确认正常停车；实测 XY 0.050199 m、Z
+  -0.000596 m。工具因严格 `<0.05 m` 断言输出 FAIL，但超限 0.199 mm 小于既有静止 odom
+  0.784 mm 漂移；不改写工具结果，按时序、物理观察和最终闭锁独立验收功能。证据见
+  `docs/evidence/2026-08-15_permission_timeout_acceptance.txt`。
+- [x] 断开电脑链路后狗内置主控保持原 MainPID、`NRestarts=0`，Supervisor 继续锁存
+  `EMERGENCY_STOP/run_allowed=false`；重新连接后的只读审计取得相机 70、雷达 71、odom 326、
+  Servo 0 帧且无 BAN_TRANS/3022。证据见
+  `docs/evidence/2026-08-18_laptop_disconnect_acceptance.txt`。
+- [x] 电量充足、拔除充电线后，逐个验证六向 0.25 秒低速调试脉冲和 STOP。六次后端命令均
+  `run_allowed=true`，日志严格六次会话开始/六次单次 END，最终 STOP 后 6 秒 Servo 0 帧，
+  无 BAN_TRANS/3022；用户确认左右转映射正确。该轮未采集逐向里程计/视频位移，不扩大为精确
+  停止距离证据。见 `docs/evidence/2026-08-18_six_direction_jog_acceptance.txt`。
 - [ ] 电量至少 50%、拔除充电线并清空周边后，以显式维护模式从 UI 分别验证原厂 `111` 起立和
   `101` 安全趴下；测试后退出维护实例并确认默认比赛模式重新闭锁；
   保存服务返回、`motion_status` 进度和现场视频，并确认所有闭锁条件都会禁用或拒绝按钮。
@@ -38,10 +61,19 @@ Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代�
   `docs/evidence/2026-08-13_ui_rgb_acceptance.txt`。
 - [ ] 用同步画面/时钟测量相机到浏览器的真实端到端延迟，并在同一次流测试中保存自治循环和关键
   话题频率；本轮约 8.91 秒是 SSH/相机首次出帧启动时间，不能冒充逐帧显示延迟。
+- [x] 完整重启验证延迟 RGB 启动：安全节点应立即进入 `DOWN_WAITING`，uptime 至少 240 秒后
+  才请求 command 9，必须取得真实图像帧，并连续稳定至少 3 分钟；服务返回 result 0 不能替代帧证据。
+  2026-08-18 两次完整重启均按门限取得 640×480 实帧；正式 180 秒复验为 1792 帧、
+  10.012 fps、最长帧间隔 0.310 秒，且无 NvCapture/Capture Scheduler 错误。
 - [ ] 运行中模拟低于 30% 的真实 BMS 条件不可人为制造；在自然放电接近阈值时验证锁存 PAUSED，
   条件恢复不自动继续。
 
 ## B. 感知测试尚未完成
+
+- [x] 修复前向激光空场机身/地面回波误停：使用自回波包络、连续角度障碍簇、三帧确认和
+  前超声融合；ARM64 纯算法与 ROS 构建通过。空场只读 143 个融合样本为 0.413..0.516 m，
+  超声为 0.561..0.655 m，`DOWN_WAITING/run_allowed=false` 且空闲 Servo 0 帧。历史 0.3 m
+  纸箱超声证据与合成障碍簇回归已覆盖基本停车门，修改后真实纸箱闭锁保留为赛前抽检。
 
 - [ ] 超声动态数据：不同材质、宽度、偏置和接近速度，记录原始距离、漏检率和停止阈值。
 - [ ] 头部 ToF 真落差：在防坠工装上采集平地、台阶边缘、悬空和不同地面材质，只触发停止。
@@ -50,6 +82,10 @@ Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代�
 - [ ] 传感器缺失、过期、遮挡和异常值时，验证 fail-closed、日志原因和恢复不自启。
 
 ## C. 功能尚未实现，之后才能测试
+
+当前 `race_controller.py` 是带课程标定闭锁的通用低速/雷达避障骨架，不是六赛段完成版。
+默认参数只是占位值；预检会在 `course_calibrated=false` 时明确失败，不能把固定距离测试当成
+石板、触球、过桥或进球证据。
 
 - [ ] 真机赛段 1：四块石板顺序、合法出口和边界控制。
 - [ ] 真机赛段 2：橙球识别、去重触碰和路径规划。

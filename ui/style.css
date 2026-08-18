@@ -74,6 +74,9 @@ select { width: 100%; min-height: 48px; border-radius: 12px; border: 1px solid v
 .jog-pad button { background: var(--panel-2); border-color: var(--line); }
 .jog-pad .jog-stop { background: rgba(255, 93, 104, .15); border-color: rgba(255, 93, 104, .5); color: #ffb4ba; }
 .posture-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.maintenance-safety-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 10px; }
+.workflow-hint { margin: 0; padding: 10px 12px; border-radius: 10px; color: var(--cyan); background: rgba(47, 211, 201, .08); border: 1px solid rgba(47, 211, 201, .25); font-size: 13px; line-height: 1.5; }
+.workflow-hint.alert { color: #ffd1d4; background: rgba(255, 93, 104, .12); border-color: rgba(255, 93, 104, .45); font-weight: 800; }
 .posture { cursor: pointer; background: var(--panel-2); border-color: var(--line); }
 .posture.stand { color: #b9ddff; border-color: rgba(101, 169, 255, .55); }
 .posture.lie { color: #ffe0a6; border-color: rgba(255, 201, 103, .55); }

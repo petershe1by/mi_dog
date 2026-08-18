@@ -241,6 +241,9 @@ def main() -> int:
     assert "token=<redacted>" in logs
     app_source = (ROOT / "ui" / "app.js").read_text()
     assert "encodeURIComponent(token)" not in app_source
+    server_source = (ROOT / "scripts" / "competition_ui.py").read_text()
+    assert "pkill -f '^python3 - --topic" in server_source
+    assert "exec timeout 120s python3" in server_source
     posture_source = (ROOT / "scripts" / "robot_posture.sh").read_text()
     assert "hard_minimum_soc = 30" in posture_source
     assert "ParameterType.PARAMETER_INTEGER" in posture_source

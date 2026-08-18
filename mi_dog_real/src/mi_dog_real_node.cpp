@@ -11,6 +11,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
+#include "mi_dog_real/front_clearance_filter.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "protocol/msg/motion_servo_cmd.hpp"
 #include "protocol/msg/touch_status.hpp"
@@ -18,7 +19,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "sensor_msgs/msg/range.hpp"
 #include "std_msgs/msg/bool.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
@@ -73,12 +76,16 @@ class MiDogRealNode final : public rclcpp::Node {
         declare_parameter<bool>("require_supervisor_run_allowed", true);
     const auto camera_topic = declare_parameter<std::string>("camera_topic", "/image");
     const auto lidar_topic = declare_parameter<std::string>("lidar_topic", "/scan");
+    const auto ultrasonic_topic =
+        declare_parameter<std::string>("ultrasonic_topic", "/ultrasonic_payload");
     const auto pose_topic = declare_parameter<std::string>("pose_topic", "/pose_filtered");
     const auto odometry_topic = declare_parameter<std::string>("odometry_topic", "/odom_out");
     const auto estop_topic =
         declare_parameter<std::string>("estop_topic", "/mi_dog_real/emergency_stop");
     const auto motion_topic = declare_parameter<std::string>("motion_topic", "/motion_servo_cmd");
     const auto command_topic = declare_parameter<std::string>("command_topic", "/mi_dog_real/safe_cmd_vel");
+    const auto front_clearance_summary_topic = declare_parameter<std::string>(
+        "front_clearance_summary_topic", "/mi_dog_real/front_clearance_summary");
     const auto voice_command_topic =
         declare_parameter<std::string>("voice_command_topic", "/mi_dog_real/voice_command");
     const auto touch_topic =
@@ -123,6 +130,15 @@ class MiDogRealNode final : public rclcpp::Node {
     front_stop_distance_m_ = declare_parameter<double>("front_stop_distance_m", 0.35);
     front_slow_distance_m_ = declare_parameter<double>("front_slow_distance_m", 0.70);
     front_half_angle_rad_ = declare_parameter<double>("front_half_angle_rad", 0.45);
+    front_lidar_self_echo_max_m_ =
+        declare_parameter<double>("front_lidar_self_echo_max_m", 0.32);
+    front_lidar_cluster_range_jump_m_ =
+        declare_parameter<double>("front_lidar_cluster_range_jump_m", 0.12);
+    front_lidar_cluster_min_samples_ =
+        declare_parameter<int>("front_lidar_cluster_min_samples", 4);
+    front_confirmation_frames_ = declare_parameter<int>("front_confirmation_frames", 3);
+    front_ultrasonic_extreme_stop_m_ =
+        declare_parameter<double>("front_ultrasonic_extreme_stop_m", 0.20);
     max_tilt_rad_ = declare_parameter<double>("max_tilt_rad", 0.60);
     stop_heartbeat_sec_ = declare_parameter<double>("stop_heartbeat_sec", 0.20);
 
@@ -133,12 +149,26 @@ class MiDogRealNode final : public rclcpp::Node {
         max_forward_accel_mps2_ <= 0.0 || max_lateral_accel_mps2_ <= 0.0 ||
         max_yaw_accel_rps2_ <= 0.0 || step_height_m_ <= 0.0 ||
         front_stop_distance_m_ <= 0.0 || front_slow_distance_m_ <= front_stop_distance_m_ ||
-        front_half_angle_rad_ <= 0.0 || max_tilt_rad_ <= 0.0 ||
+        front_half_angle_rad_ <= 0.0 || front_lidar_self_echo_max_m_ <= 0.0 ||
+        front_lidar_self_echo_max_m_ >= front_stop_distance_m_ ||
+        front_lidar_cluster_range_jump_m_ <= 0.0 ||
+        front_lidar_cluster_min_samples_ < 2 || front_confirmation_frames_ < 2 ||
+        front_ultrasonic_extreme_stop_m_ <= 0.0 ||
+        front_ultrasonic_extreme_stop_m_ >= front_stop_distance_m_ || max_tilt_rad_ <= 0.0 ||
         stop_heartbeat_sec_ <= 0.0 || touch_lockout_sec_ <= 0.0 ||
         audio_feedback_play_id_ < 0 || audio_feedback_play_id_ > 65535) {
       throw std::invalid_argument("Invalid safety parameter: limits must be positive and slow distance must exceed stop distance.");
     }
     control_period_sec_ = 1.0 / publish_rate_hz;
+    front_clearance_filter_ = std::make_unique<mi_dog_real::FrontClearanceFilter>(
+        mi_dog_real::FrontClearanceConfig{
+            front_half_angle_rad_, front_stop_distance_m_, front_slow_distance_m_,
+            front_lidar_self_echo_max_m_, front_lidar_cluster_range_jump_m_,
+            static_cast<std::size_t>(front_lidar_cluster_min_samples_),
+            static_cast<std::size_t>(front_confirmation_frames_),
+            front_ultrasonic_extreme_stop_m_});
+    front_clearance_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(
+        front_clearance_summary_topic, rclcpp::SensorDataQoS());
 
     armed_ = enable_motion_ && arm_token == kArmToken;
     voice_enabled_ = !require_voice_start_;
@@ -159,20 +189,30 @@ class MiDogRealNode final : public rclcpp::Node {
         lidar_topic, rclcpp::SensorDataQoS(),
         [this](sensor_msgs::msg::LaserScan::ConstSharedPtr scan) {
           last_lidar_ = now();
-          front_clearance_m_ = scan->range_max;
           std::size_t front_samples = 0;
           for (std::size_t index = 0; index < scan->ranges.size(); ++index) {
             const double angle = scan->angle_min + index * scan->angle_increment;
             const double wrapped_angle = std::atan2(std::sin(angle), std::cos(angle));
             if (std::abs(wrapped_angle) > front_half_angle_rad_) continue;
             ++front_samples;
-            const auto range = scan->ranges[index];
-            if (std::isfinite(range) && range >= scan->range_min && range <= scan->range_max) {
-              front_clearance_m_ = std::min(front_clearance_m_, static_cast<double>(range));
-            }
           }
           lidar_valid_ = front_samples > 0 && std::isfinite(scan->range_max) &&
                          scan->range_max > scan->range_min && scan->angle_increment != 0.0;
+          if (lidar_valid_) {
+            front_clearance_filter_->update_lidar(
+                scan->ranges, scan->angle_min, scan->angle_increment,
+                scan->range_min, scan->range_max);
+            front_clearance_m_ = front_clearance_filter_->clearance();
+            publish_front_clearance();
+          }
+        });
+    ultrasonic_sub_ = create_subscription<sensor_msgs::msg::Range>(
+        ultrasonic_topic, rclcpp::SensorDataQoS(),
+        [this](sensor_msgs::msg::Range::ConstSharedPtr message) {
+          front_clearance_filter_->update_ultrasonic(
+              message->range, message->min_range, message->max_range);
+          front_clearance_m_ = front_clearance_filter_->clearance();
+          publish_front_clearance();
         });
     pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
         pose_topic, rclcpp::SensorDataQoS(),
@@ -365,6 +405,15 @@ class MiDogRealNode final : public rclcpp::Node {
     return stamp.nanoseconds() > 0 && (now() - stamp).seconds() <= timeout_sec;
   }
 
+  void publish_front_clearance() {
+    if (!front_clearance_pub_) return;
+    std_msgs::msg::Float64MultiArray message;
+    message.data = {front_clearance_filter_->clearance(),
+                    front_clearance_filter_->lidar_clearance(),
+                    front_clearance_filter_->ultrasonic_clearance()};
+    front_clearance_pub_->publish(message);
+  }
+
   bool sensors_ready() const {
     const bool camera_ready = image_valid_ && recent(last_image_, sensor_timeout_sec_);
     const bool lidar_ready = lidar_valid_ && recent(last_lidar_, sensor_timeout_sec_);
@@ -426,13 +475,12 @@ class MiDogRealNode final : public rclcpp::Node {
   }
 
   void publish_stop() {
-    const auto stamp = now();
-    const bool heartbeat_due = last_stop_.nanoseconds() == 0 ||
-                               (stamp - last_stop_).seconds() >= stop_heartbeat_sec_;
-    if (!stop_sent_ || heartbeat_due) {
+    // SERVO_END is a session transition, not an idle heartbeat.  Repeating it
+    // without an active gait session makes the stock motion manager enter
+    // BAN_TRANS.  End each active session exactly once, then stay silent.
+    if (servo_session_active_ && !stop_sent_) {
       motion_pub_->publish(make_command(kServoStop));
-      last_stop_ = stamp;
-      if (!stop_sent_) RCLCPP_WARN(get_logger(), "Safety gate started stop heartbeat.");
+      RCLCPP_WARN(get_logger(), "Safety gate ended the active servo session.");
     }
     stop_sent_ = true;
     servo_session_active_ = false;
@@ -578,6 +626,11 @@ class MiDogRealNode final : public rclcpp::Node {
   double front_stop_distance_m_{0.35};
   double front_slow_distance_m_{0.70};
   double front_half_angle_rad_{0.45};
+  double front_lidar_self_echo_max_m_{0.32};
+  double front_lidar_cluster_range_jump_m_{0.12};
+  int front_lidar_cluster_min_samples_{4};
+  int front_confirmation_frames_{3};
+  double front_ultrasonic_extreme_stop_m_{0.20};
   double max_tilt_rad_{0.60};
   double stop_heartbeat_sec_{0.20};
   double touch_lockout_sec_{1.5};
@@ -601,11 +654,11 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Time last_estop_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_command_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_supervisor_run_allowed_{0, 0, RCL_ROS_TIME};
-  rclcpp::Time last_stop_{0, 0, RCL_ROS_TIME};
   rclcpp::Time last_touch_pause_{0, 0, RCL_ROS_TIME};
   geometry_msgs::msg::Twist command_{};
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Range>::SharedPtr ultrasonic_sub_;
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr estop_sub_;
@@ -616,11 +669,13 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr wake_event_sub_;
   rclcpp::Publisher<protocol::msg::MotionServoCmd>::SharedPtr motion_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr race_enabled_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr front_clearance_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr wake_word_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr operator_event_pub_;
   rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr continue_dialog_pub_;
   rclcpp::Client<protocol::srv::AudioTextPlay>::SharedPtr audio_feedback_client_;
   rclcpp::TimerBase::SharedPtr timer_;
+  std::unique_ptr<mi_dog_real::FrontClearanceFilter> front_clearance_filter_;
 };
 
 int main(int argc, char **argv) {

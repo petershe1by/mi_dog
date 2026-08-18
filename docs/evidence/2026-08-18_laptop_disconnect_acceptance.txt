@@ -1,0 +1,19 @@
+Mi Dog laptop-link disconnect acceptance
+Date: 2026-08-18 Asia/Shanghai
+
+- Before disconnect, the real low-speed session had ended and structured STOP
+  had latched EMERGENCY_STOP/run_allowed=false.
+- The user disconnected the laptop link for the requested interval and then
+  confirmed reconnection.
+- After reconnection, mi-dog-real-sensor.service retained MainPID 6132,
+  ExecMainStartTimestamp 2026-08-18 19:04:53 CST, NRestarts=0, active.
+- Supervisor remained EMERGENCY_STOP/run_allowed=false.
+- Read-only topic audit passed with camera 70 frames, lidar 71 frames,
+  odometry 326 frames, and real Servo 0 frames during the sample window.
+- Battery was 69%, unplugged; motion_switch_status=0.
+- No BAN_TRANS or motion error 3022 was present in the audit window.
+
+Result: PASS for dog-local service continuity and latched-stop independence
+from the laptop connection. This does not by itself validate an active-motion
+link-loss watchdog; command timeout and supervisor permission timeout have
+separate real-robot evidence.

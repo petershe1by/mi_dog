@@ -39,9 +39,9 @@
         <button class="ghost" id="refreshButton">刷新状态</button>
       </div>
       <div class="action-row">
-        <button class="action start" data-action="start">一键启动</button>
+        <button class="action start" data-action="start">START · 开始</button>
         <button class="action pause" data-action="pause">暂停</button>
-        <button class="action disable" data-action="stop">立即失能</button>
+        <button class="action disable" data-action="stop">STOP · 急停</button>
         <button class="action restart" data-action="restart">重启进程</button>
       </div>
       <div class="stage-row">
@@ -84,6 +84,11 @@
         </div>
         <p class="hint maintenance-hint" id="maintenanceHint">正式比赛模式下，人工移动与姿态接口由后端关闭。仅限赛前维护时使用 <code>--maintenance-controls</code> 显式启用。</p>
         <p class="hint">每次点击仅发送 0.25 秒低速脉冲；必须同时满足电量 ≥30%、未接充电线、enable_motion=True 和 run_allowed=true。物理测试建议从 ≥50% 开始。</p>
+        <div class="maintenance-safety-row">
+          <button class="action start" data-action="start">START · 允许运动</button>
+          <button class="action disable" data-action="stop">STOP · 立即急停</button>
+        </div>
+        <p class="workflow-hint" id="workflowHint">操作顺序：起立 → START → 方向脉冲 → STOP。STOP 会锁定急停，必须重启进程后才能再次操作。</p>
         <div class="posture-row">
           <button class="posture stand" data-posture="stand">起立</button>
           <button class="posture lie" data-posture="lie-down">安全趴下</button>

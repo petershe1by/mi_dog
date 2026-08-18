@@ -87,6 +87,13 @@
     maintenanceMode.textContent = maintenanceControlsEnabled ? "维护控制已启用" : "正式比赛模式";
     maintenanceMode.className = `lock ${maintenanceControlsEnabled ? "unlocked" : ""}`;
     document.getElementById("maintenanceHint").hidden = maintenanceControlsEnabled;
+    const workflowHint = document.getElementById("workflowHint");
+    if (workflowHint) {
+      workflowHint.textContent = values.state === "EMERGENCY_STOP" ?
+        "急停已锁定：请先点击上方“重启进程”，等待 DOWN_WAITING，再执行起立 → START。" :
+        "操作顺序：起立 → START → 方向脉冲 → STOP。STOP 会锁定急停，必须重启进程后才能再次操作。";
+      workflowHint.className = `workflow-hint ${values.state === "EMERGENCY_STOP" ? "alert" : ""}`;
+    }
     setBusy(busy);
   }
 

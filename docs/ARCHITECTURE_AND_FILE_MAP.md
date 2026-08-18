@@ -22,8 +22,7 @@ mi_dog_real_node ──operator_event──> mi_dog_supervisor_node
       │                                  ├─ state/current_stage/checkpoint
       │                                  └─ run_allowed (实时且 fail-closed)
       │                                              │
-可选兼容急停输入 ─────> mi_dog_estop_guard_node ── emergency_stop ──┤
-safe_cmd_vel ────────────────────────────────────────────────┤
+比赛控制器/维护 UI ─────────────── safe_cmd_vel ───────────────┤
       │                                              v
       └──────── 最终运动适配门 <── 传感器/急停 ── motion_servo_cmd
 
@@ -33,7 +32,10 @@ safe_cmd_vel ──────────────────────�
                                   └─ head_ground_roi_summary
 ```
 
-当前正式服务使用 `enable_motion=false`，所以图中的真实 `motion_servo_cmd` 输出被总开关切断。
+当前维护/比赛配置使用 `enable_motion=true`，但 Supervisor 默认 `DOWN_WAITING/run_allowed=false`；
+比赛控制器还要求显式 `course_calibrated=true`。没有活动 Servo 会话时适配器完全静默。赛事不要求
+额外实体急停，因此 maintenance/competition launch 不启动兼容 E-stop guard；sensor-only 回滚
+launch 仍保留它。
 
 ## 顶层文件
 
@@ -69,12 +71,16 @@ safe_cmd_vel ──────────────────────�
 | `mi_dog_real/scripts/estop_hid_isolated_test.py` | 用 FIFO 验证原型逻辑，不证明狗的外部接口可接 HID |
 | `mi_dog_real/scripts/ground_tof_capture.py` | 只读采集头部地面 ROI 的统计工具 |
 | `mi_dog_real/scripts/estop_guard_isolated_test.py` | 在隔离话题验证急停按下、释放、断线和重新解锁序列 |
-| `mi_dog_real/config/this_robot_sensor_only.yaml` | 这台狗的实测 topic 映射；正式服务使用 |
+| `mi_dog_real/config/this_robot_sensor_only.yaml` | 失能回滚配置和实测 topic 映射 |
+| `mi_dog_real/config/this_robot_competition.yaml` | maintenance/competition 共用的 motion-enabled 最终适配配置 |
+| `mi_dog_real/config/race_controller.yaml` | 真机比赛骨架参数；默认课程未标定闭锁 |
 | `mi_dog_real/config/real_robot.yaml` | 通用保守模板，默认仍关闭运动 |
 | `mi_dog_real/config/supervisor.yaml` | supervisor 话题、阈值、新鲜度和检查点路径 |
 | `mi_dog_real/config/estop_guard.yaml` | 急停原始输入、输出、状态、0.25 秒超时及 20 Hz 心跳 |
 | `mi_dog_real/config/estop_hid.yaml` | 专用 `/dev/input/by-id`、KEY_F12、常闭极性及 50 Hz 心跳 |
-| `mi_dog_real/launch/sensor_only.launch.py` | 正式开机服务的无运动 launch |
+| `mi_dog_real/launch/sensor_only.launch.py` | 失能回滚 launch |
+| `mi_dog_real/launch/maintenance.launch.py` | UI 维护栈；无自主比赛控制器 |
+| `mi_dog_real/launch/competition.launch.py` | 比赛栈；包含课程标定闭锁的控制器 |
 | `mi_dog_real/launch/real_robot.launch.py` | 通用 launch；不能视作已批准运动配置 |
 
 ## 脚本和服务
@@ -95,7 +101,7 @@ safe_cmd_vel ──────────────────────�
 | `scripts/setup_robot_ssh_key.sh` | 一次性创建和安装 UI 专用 Ed25519 公钥，不保存密码 |
 | `scripts/run_sensor_gate.sh` | 真机 ROS 环境和 CycloneDDS 环境设置 |
 | `scripts/capture_deployment_manifest.sh` | 拒绝重复节点并记录真机进程、参数和 SHA256 |
-| `systemd/mi-dog-real-sensor.service` | 真机开机自启的无运动服务单元 |
+| `systemd/mi-dog-real-sensor.service` | 当前开机自启维护服务；切换比赛模式必须单独批准 |
 
 ## 关键真机接口
 

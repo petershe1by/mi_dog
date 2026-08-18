@@ -439,7 +439,187 @@
 - 下一次先充至建议 70% 以上，再拔线确认空场；剩余停止链必须在有界低速非零会话中测停车
   延迟和距离，不能再用静止命令模拟活动会话。
 
+## 2026-08-15：有界低速前进与 PAUSE 真机 canary
+
+- 电池充满后拔除充电线，BMS 为未充电且正常；原厂起立动作 `111` 返回成功和 100% 进度，
+  用户确认稳定站立。
+- 使用临时独立适配器发送一次 `vx=0.05 m/s`、持续 0.25 秒的真实前进命令；正式服务始终
+  `enable_motion=False`。
+- 捕获 START、四个 DATA 和 PAUSE 后四个 END；PAUSE 在 0.50 秒内撤权，END 后无 DATA。
+  odom XY 变化 0.031935 m。用户确认短距离前进与停止正常，无打滑、异常抬脚、持续行走、
+  明显晃动或异常声音。
+- 收尾只读审计通过：四个正式节点各一、临时适配器退出、`PAUSED/run_allowed=false`。
+  本轮不证明 watchdog、活动重启、链路中断和其他方向，下一项仍按单变量原则验证。
+- 原始摘要：`docs/evidence/2026-08-15_bounded_forward_canary.txt`。
+
+### 同日后续：watchdog 首轮物理正常但距离门失败
+
+- 第二次明确批准的真机测试发送同一 `vx=0.05 m/s × 0.25 s` 脉冲，随后停止发布并等待
+  0.30 秒命令 watchdog。自动 END 和脚本 PAUSE END 都在 0.50 秒内，END 后无 DATA。
+- 用户确认机器狗保持站立、运动正常且正常停住；114 组四足接触四路始终为 0.5。
+- odom XY 变化 0.055171 m，超过预设 0.05 m 门限；Z 变化 0.093842 m，状态样本出现
+  motion ID 102/111。因此工具正确输出 FAIL，watchdog 整项不勾选完成，也没有继续测试。
+- 收尾只读审计通过，最终 `PAUSED/run_allowed=false`、正式 `enable_motion=False`、临时适配器
+  退出。下一步先分析减速斜坡、odom 基线与 motion ID 语义，不直接放宽门限或重跑。
+- 原始摘要：`docs/evidence/2026-08-15_bounded_watchdog_attempt.txt`。
+- 后续只读核对狗上官方 `motion_id_map.toml`：102 为备用高阻尼趴下、111 为恢复站立、112 为
+  行走后站立、303 为慢速行走。结合用户全程观察为站立，102/111 样本只能视为历史/转换状态，
+  不能当作测试中实际趴下/起立。代码确认超时后直接 END；END 前六个 DATA 属于 0.30 秒命令
+  有效窗口，不是超时后继续输出，但该事实本身不足以放宽 5 cm 门限。
+- 进一步审计发现工具在临时适配器启动前记录 odom 起点，随后预启动 END 和 1.5 秒稳定过程
+  被混入最终位移。因此 0.055171 m 不是有效的纯运动/停车距离；本轮仍记 FAIL，但归因为测量
+  范围错误而不是已证明停车过远。修正版把基线移到 RUNNING 后、首条前进命令前，语法检查通过，
+  SHA256 为 `7e528f2b6f830d8c70c2dec68d27d433c3f209bc43600fedf4cb1712b96aaf55`。
+- 用户明确批准后用修正版复测：电量 81%、未充电，捕获 START/DATA、0.30 秒命令超时 END，
+  之后 PAUSE END；两个 END 时序均在 0.50 秒内，END 后无 DATA。正确基线下 odom XY
+  0.034104 m、Z -0.001086 m，状态 303→112，工具输出 `BOUNDED_WATCHDOG_TELEMETRY=PASS`。
+- 用户确认短距前进、及时停车和站立均正常，无打滑、异常抬脚、明显晃动、继续行走或异常声音；
+  收尾只读审计通过。因此 0.30 秒命令 watchdog 正式通过。Supervisor 0.50 秒许可过期仍须
+  独立验证，不能由本轮替代。
+
+### 同日后续：Supervisor 许可失鲜停止通过
+
+- 首轮隔离许可发布端 QoS durability 不兼容，DDS 明确不传消息；适配器保持抑制、没有进入
+  运动会话，工具 fail-closed，收尾审计通过。随后改为与正式许可一致的
+  transient-local/reliable QoS。
+- 用户明确批准修正版后，以正式 Supervisor 始终 `PAUSED/run_allowed=false`、临时隔离许可
+  方式执行低速测试。许可停止后 0.60 秒内 END，END 后继续发布前进命令也无 DATA；最终 PAUSE
+  END 在 0.50 秒内，临时进程退出，完整只读审计通过。
+- odom XY 0.050199 m、Z -0.000596 m；用户确认低速运动、及时停车和站立均正常，无打滑、
+  异常抬脚、晃动、继续行走或异常声音。工具因严格 `<0.05 m` 断言输出 FAIL，原始结果不改写；
+  超限 0.199 mm 小于既有 0.784 mm 静止 odom 漂移。按 END 时序、END 后拒绝、现场物理观察和
+  最终闭锁，Supervisor 许可失鲜停止功能独立验收通过，实测距离仍原样保留。
+- 证据：`docs/evidence/2026-08-15_permission_timeout_acceptance.txt`。
+
+### 同日后续：活动 STOP 与项目服务重启通过
+
+- 完整关机重启清除拔充电线后残留的运控 `CHARGING=14`；只读审计通过，比赛前 6 秒频率为
+  image 9.155 Hz、scan 8.489 Hz、odom 38.949 Hz。原厂起立 `111` 返回成功和 99% 进度，
+  用户确认稳定站立。
+- 用户明确批准后执行 `vx=0.05 m/s` 有界活动会话。结构化 STOP 在 0.50 秒内 END，END 后
+  无 DATA；限权 sudo 只重启 `mi-dog-real-sensor.service`，重启后进入
+  `DOWN_WAITING/run_allowed=false`，正式 `enable_motion=False`。继续发布测试前进命令只有
+  END，没有自动恢复旧运动。
+- odom XY 0.014769 m、Z -0.006642 m，工具输出
+  `BOUNDED_STOP_RESTART_TELEMETRY=PASS`。用户确认短距前进、停车、服务重启过程和声音均正常，
+  最终稳定趴卧。收尾 `READ_ONLY_AUDIT=PASS`，四个正式节点各一、临时适配器退出。
+- 证据：`docs/evidence/2026-08-15_active_stop_restart_acceptance.txt`。本轮不证明电脑链路断开、
+  其他方向或自治赛段。
+
 ## 如何继续记录
 
 每次工作结束，在本文件追加：日期、目标、变更文件、测试条件、观测数据、最终姿态、
 真机部署 commit、未解决问题和下一条可执行任务。不要只写“完成”或“测试成功”。
+
+## 2026-08-17：修复空闲重复 SERVO_END 导致 BAN_TRANS
+
+- 根因已由原厂运控日志和协议常量确认：`SERVO_END` 是活动 303 Servo 会话的结束转换，旧适配器
+  却把它当作 0.20 秒空闲心跳持续发布。原厂 MotionManager 因无活动会话仍反复收到 END，返回
+  `BAN_TRANS`（`switch_status=5`）和错误码 3022；此前站立状态下 END-only 未出错的验收不能推广
+  到趴卧/空闲状态。
+- 用户明确批准后先停止 `mi-dog-real-sensor.service`，确认 `inactive`，再修改
+  `mi_dog_real_node.cpp`：抑制或空闲且没有活动 Servo 会话时不发布任何 Servo 帧；非零命令仍以
+  一次 START 建立会话；命令 watchdog、Supervisor 撤权或其他安全门退出活动会话时只发布一次
+  可靠 END，之后保持静默。未删除雷达、倾角、watchdog、Supervisor 和 UI STOP 安全门。
+- 隔离回归使用 `/mi_dog_test/servo_sequence/*`，没有连接真实运动话题。结果：初始抑制和零命令
+  均 0 帧；三个新活动会话均 START 后 DATA；0.30 秒命令超时恰好一个 END；Supervisor 撤权
+  恰好一个 END；重新许可但没有新命令时 0 帧；所有 START/END 的速度和步高均为零。
+- ARM64 `colcon build --packages-select mi_dog_real --symlink-install` 通过，用时 1 分 46 秒。
+  机器人端源文件 SHA256 分别为 `2e6f45a53dcf6af01c314fda57cf32e4c6809445eb355253201ea2e338f7acc6`
+  和 `750dacddb62f953354fa99eb0414cf28113d83b841740fb016aed8d2120678c2`；安装二进制 SHA256 为
+  `e801711a2268822d2fab03190bbfba6e697f799f8c2c73e99e8fbb725e8d9184`。
+- 重启维护服务后只读状态为 `active`、`DOWN_WAITING`、stage 1、`run_allowed=false`。真实
+  `/motion_servo_cmd` 连续 6 秒没有任何输出，本次启动后的日志没有新的 `Receive ServoCmd`、
+  `BAN_TRANS` 或 `motion error code 3022`。全程未发送 START、姿态或移动命令。
+- 收尾时电池 75%、23.698 V、35°C、健康度 99，仍为有线充电，原厂状态 14，Supervisor 正确
+  报告 `motion_controller_charging_inhibited`。原相机服务仍返回 result 5，属于此前已确认的独立
+  相机故障；需要完整重启机器人后再验相机和拔线后的原厂运控状态，不能用本轮结果宣称可运动。
+## 2026-08-15 competition-stack preflight
+
+- Added a fail-closed six-stage real controller, competition launch/config, and strict preflight.
+- Robot-side ARM64 ROS build passed; dependency-free six-stage, ordering, and fail-closed tests passed.
+- Installed the explicitly approved motion-enabled competition service without sending `START`.
+- Live preflight passed: camera, lidar, and odometry received; controller reported `sensors_fresh=true`, `INHIBITED`, stage 1, and `run_allowed=false`.
+- UI backend status passed against the live service: `active`, `enable_motion=True`, `DOWN_WAITING`, stage 1, battery 69%.
+- Robot was still wired charging (`motion_switch_status=14`), so the supervisor correctly kept motion inhibited. Unplug before the final competition START readiness check.
+
+## 2026-08-17：完成无需赛道的课程闭锁与预检加固
+
+- 用户明确批准在不重启整机、不切换比赛服务和不发送运动指令的边界内完成课程闭锁、预检、
+  只读审计、文档、ARM64 构建和隔离验收。
+- `race_controller.py` 新增默认 `course_calibrated=false`。即使 Supervisor 许可为真且相机、雷达、
+  odom 都新鲜，未标定课程仍只输出零速、不会发布赛段完成，并报告
+  `COURSE_UNCALIBRATED`。控制器输入输出话题全部参数化，允许测试严格隔离在
+  `/mi_dog_test/race_course_gate/*`。
+- 本地依赖无关回归通过六赛段顺序、输入失效闭锁和课程未标定闭锁；ARM64 增量构建通过，用时
+  5.79 秒。机器人端再次运行依赖无关测试通过；ROS 隔离测试取得 23 条命令，全部为零，赛段完成
+  0 条，状态持续包含 `course_calibrated=false` 且传感器新鲜。
+- `competition_preflight.sh` 现在要求 service 确实为 competition 模式、四个比赛节点各一、
+  `DOWN_WAITING/run_allowed=false`、课程已标定、相机/雷达/odom 有样本、电量至少 50%、未充电、
+  运控状态 NORMAL、适配安全参数正确且 8 秒空闲 Servo 零帧。当前 maintenance 模式的本地流式
+  和机器人已安装脚本均正确返回 `PREFLIGHT=FAIL service_not_in_competition_mode`。
+- `robot_read_only_audit.sh` 改为自动识别 maintenance/competition/sensor-only，不再把已撤下的
+  E-stop guard 或旧 `enable_motion=false` 当作所有模式的固定事实。真机收尾审计通过：maintenance、
+  正式三节点各一、比赛控制器/guard/HID 均 0、`enable_motion=True`、`DOWN_WAITING/false`、
+  空闲 Servo 0 帧；8 秒内雷达 67 帧、odom 330 帧、相机 0 帧。
+- 收尾电量 73%、仍有线充电、运控状态 14；服务未重启、未切换、未收到 START/姿态/运动指令。
+  相机故障仍需整机重启后只读复验，课程参数和六赛段物理逻辑仍必须等待实物/赛道证据。
+- 同步一致性 SHA256：controller `59594794...e39c7a`、ROS 隔离测试
+  `bf70081b...4def4`、配置 `3cac570b...73f9c`、预检 `47d9da62...9f497`、只读审计
+  `a1d1c7a4...cb6a`；本地与机器人源文件逐项一致。
+
+## 2026-08-17：头部 RGB 冷启动竞争故障与延迟启动候选
+
+- 用户完成整机重启并拔除充电线。重启后只读状态为 52%、未充电、运控状态 0、
+  `DOWN_WAITING/run_allowed=false`、安全原因 ready；雷达约 9.14 Hz、odom 约 39.67 Hz、空闲
+  Servo 0 帧，但正式 `/image` 为 0。
+- 本次启动日志证明 RGB 并非从未启动：`camera_server` 先持续记录约 30 fps 和递增的
+  `Publishing image`，到 16:19:11 报 NVIDIA `NvCaptureGetRequest: Free request list is empty`、
+  `Capture Scheduler not running` 后停止。项目服务 command 9 在 16:17:43 返回 result 0，说明
+  原逻辑把服务响应当成功会产生假阳性。
+- 原厂 RealSense D430 lifecycle 初始为 unconfigured；一次诊断性 configure/activate 证明它是
+  独立深度/红外设备，不能恢复头部 RGB，随后已 deactivate/cleanup 回到 unconfigured。头部
+  `camera_server` 进程仍活着但内部捕获调度器失效；command 10 在 20 秒超时，未继续发送 command 9，
+  也未重启整个 `cyberdog_bringup`。
+- 根因时序证据：项目在原厂 bringup 尚未完成 RealSense/VINS 启动时开启 CSI RGB；RGB 随后逐步
+  降速并耗尽 NvCapture request。经用户明确批准，`run_sensor_gate.sh` 改为立即启动安全节点，
+  同 cgroup 后台运行 `start_camera_when_stable.sh`；助手默认等待 uptime 240 秒，再单次请求
+  640x480@10 fps，并以 20 秒内真实有效图像帧作为唯一成功条件。失败不重启服务、不放行运动。
+- 两脚本通过 `bash -n` 和 `git diff --check`，已同步但没有重启当前 maintenance 服务；远端 SHA256
+  分别为 `6c6e19351d4684f40bff28b3e3732796e8278920fdf2cde0f3ba1d00852ae832` 和
+  `b8ad65dd1327cbf157c8eecb0e80970003af485f839d88e88dc99894b4a41cc8`。下一次必须整机重启，验证
+  安全节点立即就绪、240 秒前不调用相机、之后实际出帧并连续稳定至少 3 分钟；当前不能标 PASS。
+- 最终只读收尾为 44%、21.780 V、37°C、未充电、运控状态 0、maintenance active、
+  `DOWN_WAITING/run_allowed=false`。因电量低于建议的 50% 起测线，先充电，不立即进行下一次重启验收。
+
+## 2026-08-18：延迟 RGB 与前向净空过滤真机验收
+
+- 两个完整开机周期均证明 `start_camera_when_stable.sh` 在 uptime 240 秒前不请求 RGB，之后以
+  真实有效图像帧判成功。正式连续 180 秒采集 1792 帧，平均 10.012 fps、640×480、最长帧间隔
+  0.310 秒；本次开机日志无 NvCapture、Capture Scheduler、BAN_TRANS 或 3022。
+- 新版单次 END 运动复测首次尝试被旧前向雷达最小值门正确拒绝；空场实际扫描仍含大量
+  0.02..0.30 m 的机身/地面回波，因此没有绕过安全门或重复发送运动。
+- 新增纯 C++ `FrontClearanceFilter`：过滤已测自回波包络，要求连续角度障碍簇和三帧确认，
+  清空同样三帧释放；前超声独立三帧确认，极近返回单帧停车。ARM64 回归覆盖空场、单帧、
+  障碍簇、清空、窄噪点、超声普通/极近停车并全部通过。
+- ARM64 ROS 构建通过，最终 `mi_dog_real_node` 哈希为
+  `d972c6d934bab8449b14e333a112265b38fc0b948e77d8f5827082728b568c09`。新增只读
+  `/mi_dog_real/front_clearance_summary`；空场 143 样本融合净空 0.413..0.516 m、超声
+  0.561..0.655 m，Supervisor 为 `DOWN_WAITING/run_allowed=false`、空闲 Servo 0 帧。
+- 扬声器经原厂服务从 35 调至 25，整机重启后查询仍为 25。充电后最终电量 99%、未充电、
+  运控状态 0；尚未重新发送低速动作，下一项仍是使用正确真实 Servo 话题完成一次单次 END 复测。
+- 充电后的新版活动会话复测使用实际安装参数指向的
+  `/mi_desktop_48_b0_2d_7a_fe_40/motion_servo_cmd`。真实障碍先使净空降至 0.324..0.334 m，
+  移除后恢复至 0.399..0.449 m；随后单次 0.05 m/s、0.25 秒前进严格捕获
+  `START=1, DATA=1, END=1`，END 后无 DATA/重复 END，STOP 后 6 秒零帧，日志无
+  BAN_TRANS/3022，用户确认短距前进和停车正常。调试脚本末尾会主动发送零速，因此本轮不冒充
+  独立 watchdog 证据；0.30 秒 watchdog 沿用 2026-08-15 真机验收。
+- 用户随后断开电脑链路并重新连接。狗端服务保持原 MainPID 6132、启动时间 19:04:53、
+  `NRestarts=0`；Supervisor 继续为 `EMERGENCY_STOP/run_allowed=false`。重新连接后只读审计
+  取得相机 70、雷达 71、odom 326、真实 Servo 0 帧，证明狗端服务连续运行和锁存停止不依赖
+  电脑在线；活动运动链路丢失的停止时序沿用独立 watchdog/许可超时证据。
+- 经用户明确批准，maintenance 重启到 DOWN_WAITING 后通过 UI 同后端依次执行前、后、左、右、
+  左转、右转各一次 0.25 秒脉冲。每次后均复核 RUNNING/true、safety ready、运控 0；日志严格
+  六次会话开始和六次单次 END。最终 STOP 为 EMERGENCY_STOP/false，6 秒真实 Servo 0 帧且无
+  BAN_TRANS/3022。用户现场确认左右转方向正确；本轮未保存逐向 odom/视频，因此不声称精确位移
+  或停止距离。

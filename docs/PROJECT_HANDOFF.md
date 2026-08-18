@@ -1,6 +1,6 @@
 # 项目交接总览
 
-更新日期：2026-08-13（Asia/Shanghai）
+更新日期：2026-08-17（Asia/Shanghai）
 
 仓库：`https://github.com/petershe1by/mi_dog`
 
@@ -25,13 +25,14 @@
 | Supervisor | 已完成软件门 | 状态、赛段检查点、暂停/停止、运行许可和重启闭锁已验证 |
 | 电量安全门 | 已完成软件门 | 低于 30% 或有线充电禁止运行；运行中撤权锁存 PAUSED，恢复须 CONTINUE |
 | 额外急停 | 比赛不要求 | 旧软件守卫/HID 原型保留但不作为比赛前置条件；软件许可、暂停和 watchdog 仍必须验收 |
-| 真机运动链 | 锁定 | 配置为 `enable_motion=false`；六赛段真机控制器尚未实现和验收 |
+| 真机运动链 | 安全门已验收，课程闭锁 | 适配器 motion-enabled；默认 `course_calibrated=false`，六赛段感知和物理验收尚缺 |
 | 自动安全趴下 | 未完成 | 只有 `lie_down_request` 和只读许可，没有连接姿态动作 |
 | 真机整场比赛 | 未开始 | 感知替换、零速度/停止链和分赛段控制器尚缺 |
 
-2026-08-10 17:31 安全回退部署后的正式服务检查：`mi-dog-real-sensor.service=active`，
-`manage_dialogue=false`、`enable_motion=false`，supervisor 为 `DOWN_WAITING`，急停为
-`input_missing`；没有比赛运动输出。原厂高阻尼趴下动作返回完成后，用户现场确认机器狗已稳定趴下。
+当前服务为 maintenance：`mi-dog-real-sensor.service=active`、`manage_dialogue=false`、
+`enable_motion=true`、Supervisor 为 `DOWN_WAITING/run_allowed=false`，没有自主控制器。2026-08-17
+空闲真实 Servo 话题 6 秒零帧；控制器新增 `course_calibrated=false` 默认闭锁，比赛预检会拒绝
+未标定课程。sensor-only 仍是 `enable_motion=false` 的回滚路径。
 
 2026-08-12 电脑重启流程复验后，正式服务仍 active、`DOWN_WAITING/run_allowed=false`，雷达和
 odom 正常，但原厂相机在 command 10 后的 command 9 调用卡住，当前 `/image` 无输出。不要为此
@@ -100,7 +101,7 @@ NOPASSWD 规则；UI API 的 STOP→重启→新 supervisor→`DOWN_WAITING/fals
 - 部署清单：`/home/mi/mi_dog_ws/state/deployment_manifest_*.txt`
 - 服务：`mi-dog-real-sensor.service`
 - 启动脚本：`/home/mi/mi_dog_ws/scripts/run_sensor_gate.sh`
-- 正式配置：`this_robot_sensor_only.yaml`，强制 `enable_motion=false`
+- 当前维护/比赛适配配置：`this_robot_competition.yaml`；sensor-only 配置是失能回滚路径
 - 对应仓库基线：以机器狗最新 `deployment_manifest_*.txt` 的 `source_commit` 为准；清单固定
   四枚 ARM64 二进制、三份配置、启动脚本、清单脚本和 systemd unit 的 SHA256。
 - 当前离线启动基础清单：`deployment_manifest_20260810T151435+0800.txt`，schema v2，

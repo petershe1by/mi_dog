@@ -1,12 +1,12 @@
 # CyberDog 2 真机操作手册
 
-适用范围：当前默认无运动的传感器、电脑操作和 supervisor 服务。
+适用范围：当前 maintenance/competition/sensor-only 三种服务、电脑操作和 Supervisor。
 
-当前禁止：设置 `enable_motion=true`、充电时执行姿态动作、直接运行整场自治。
+当前禁止：充电时执行姿态或运动、绕过 Supervisor/课程标定门、直接运行未验收的整场自治。
 
 ## 急停守卫
 
-正式无运动服务已启动 `mi_dog_estop_guard_node`。原始输入为
+兼容的 sensor-only 回滚栈可启动 `mi_dog_estop_guard_node`。原始输入为
 `/mi_dog_real/emergency_stop_input`：`true` 表示实体急停按下，`false` 表示按钮释放且链路
 健康。守卫在启动、输入缺失或超过 0.25 秒未更新时都向
 `/mi_dog_real/emergency_stop` 以 20 Hz 发布 `true`。
@@ -14,7 +14,8 @@
 即使首次收到 `false` 也不会解锁；必须先看到一次 `true`，再看到 `false`，形成操作者明确的
 按下—释放周期。链路超时后重新连接同样需要新的按下—释放周期。这是防止设备上电、插线或
 单根信号线故障导致自动放行的设计。当前没有实体输入设备，因此正式状态应保持
-`input_missing` 和急停 `true`；这不妨碍 `enable_motion=false` 的只读诊断。
+`input_missing` 和急停 `true`。赛事已确认不要求额外实体输入，因此当前 maintenance 和
+competition launch 不启动该守卫；它不能再作为这两种模式的节点/话题验收条件。
 
 检查命令：
 
@@ -60,8 +61,9 @@ ros2 topic echo /mi_dog_real/emergency_stop_guard/status \
 ```
 
 脚本强制使用密钥认证，不会提示或记录密码；它不发布 ROS 消息、不重启服务、不写入机器狗，
-并要求服务 active、四个正式节点各一个、HID 原型未运行、`enable_motion=False`、
-`manage_dialogue=False`、安全闭锁状态、`run_allowed=false`、急停 true 和 `input_missing`。
+并自动识别 maintenance、competition 或 sensor-only 模式，检查对应节点数量、HID 原型未运行、
+实际 `enable_motion`、`manage_dialogue=False`、安全闭锁状态、`run_allowed=false` 和空闲 Servo
+零帧；传感器样本、电量和运控状态会作为只读诊断输出。
 安全闭锁状态包括正常冷启动的 `DOWN_WAITING`、人工暂停后的 `PAUSED` 和锁存停止后的
 `EMERGENCY_STOP`；`RUNNING` 或未知状态会失败。任一条件不符都会以非零状态退出。没有公钥时继续使用下面的人工只读流程，
 密码只在交互式 SSH 提示中输入，不写入命令或脚本。
@@ -100,13 +102,14 @@ ros2 topic echo /mi_dog_real/supervisor/lie_down_safety_reason
 当前正常等待结果应是：服务 `active`、状态 `DOWN_WAITING`、`run_allowed=false`。
 `lie_down_safety_reason=ready` 只代表只读输入满足当前趴下许可，不表示会自动执行动作。
 
-7. 检查配置没有开启运动：
+7. 检查配置与当前服务模式一致：
 
 ```bash
 ros2 param get /mi_dog_real enable_motion
 ```
 
-预期为 `False`。不是 `False` 时立即停止服务并调查，不继续测试。
+sensor-only 预期为 `False`；maintenance/competition 预期为 `True`，但此时还必须同时确认
+`DOWN_WAITING/run_allowed=false`。competition 模式还要求预检确认 `course_calibrated=true`。
 
 ## 电脑比赛控制
 
@@ -142,9 +145,15 @@ SSH/sudo 提示中交互输入，不存储。`pause` 应返回 `PAUSED/run_allow
 `multi-user.target` 自启；unit 只等待 `network.target`，不等待外部网络在线。CycloneDDS
 配置 `/etc/mi/cyclonedds.xml` 固定使用 `lo` 和 `localhost`，本机 ROS 2 通信不依赖 eth0。
 
-当前服务仍是无运动版本，它只能证明开机等待、语音、触摸、传感器和 supervisor 的本机
-基础链，不能完成六赛段。正式运动版本必须另行逐段验收，不能通过把当前 YAML 的
-`enable_motion` 直接改为 true 得到。
+当前 systemd 服务运行 maintenance 栈：运动适配器已启用，但没有自主比赛控制器，启动后保持
+`DOWN_WAITING/false`。competition 栈虽然包含六段通用低速骨架，也默认
+`course_calibrated=false`，因此未标定时只报告 `COURSE_UNCALIBRATED` 并保持零输出。它不能替代
+六赛段真实感知、物理验收或整场冷跑。
+
+头部 RGB 由同一 service cgroup 中的 `start_camera_when_stable.sh` 异步管理。安全节点不等待
+相机即可先进入 `DOWN_WAITING`；助手默认等系统 uptime 至少 240 秒，避开原厂
+bringup/RealSense/VINS 集中启动期，再请求 command 9。`result=0` 不是成功条件，必须实际收到
+有效 `/image` 帧。助手失败只记录日志，适配器和比赛预检继续因相机缺失而 fail-closed。
 
 2026-08-10 已完成一次真实冷启动验收：用户确认外部网线在开机、等待、唤醒和“暂停”期间
 均已拔除，随后才插回；日志显示四节点自启、口令被接受、离线提示音完成且无运动输出。
@@ -237,8 +246,10 @@ install -m 0755 /path/to/capture_deployment_manifest.sh \
 /home/mi/mi_dog_ws/scripts/capture_deployment_manifest.sh --source-commit COMMIT
 ```
 
-工具要求四种正式节点各只有一个进程；HID 原型不得出现在正式服务中。若隔离测试留下同名
-孤儿进程，工具会拒绝生成清单。
+清单 schema v3 会从 systemd `ExecStart` 识别 `sensor-only`、`maintenance` 或
+`competition`：三种模式都要求适配器、状态桥和 Supervisor 各一个进程；sensor-only 还要求
+急停守卫单实例，competition 还要求比赛控制器单实例，而 maintenance 明确拒绝这两个进程。
+HID 原型不得出现在正式服务中。若隔离测试留下同名孤儿进程，工具会拒绝生成清单。
 不要在存在重复节点时相信 `ros2 param get /mi_dog_real ...` 的单次结果。
 
 不得运行赛事镜像中的 `scp_to_cyberdog.sh`；它会删除或覆盖原厂运控目录。

@@ -1,0 +1,34 @@
+Mi Dog six-direction maintenance jog acceptance
+Date: 2026-08-18 Asia/Shanghai
+
+Authorization and preconditions
+- User explicitly approved one 0.25 s low-speed pulse in each order:
+  forward, backward, left, right, turn-left, turn-right.
+- maintenance service was restarted only after idempotent STOP and returned a
+  new Supervisor process in DOWN_WAITING.
+- Structured START was accepted: RUNNING/run_allowed=true.
+- Initial battery was 61%, unplugged; safety_reason=ready and
+  motion_switch_status=0.
+
+Execution
+- Each direction was sent separately through robot_jog.sh, the same backend
+  used by the maintenance UI.
+- Every command reported pulse_seconds=0.25 and run_allowed=true.
+- After each pulse, status remained RUNNING/run_allowed=true,
+  safety_reason=ready, motion_switch_status=0.
+- Service logs recorded exactly six "Servo session started" entries and six
+  "Safety gate ended the active servo session" entries.
+- User physical feedback: "对的，转的是对的"; left/right turn mapping was
+  observed to be correct.
+
+Final state
+- Structured STOP produced EMERGENCY_STOP/run_allowed=false.
+- Six-second post-STOP observation contained zero real Servo frames.
+- No BAN_TRANS or motion error 3022 was present.
+- Final battery 55%, temperature 35 C, unplugged, motion_switch_status=0.
+
+Result
+- PASS: six backend direction commands, per-pulse session termination, turn
+  direction mapping, and final STOP lockout.
+- Translational odometry/video displacement was not captured in this run and
+  is not claimed here.

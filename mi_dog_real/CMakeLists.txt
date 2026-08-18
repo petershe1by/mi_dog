@@ -15,6 +15,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
 add_executable(mi_dog_real_node src/mi_dog_real_node.cpp)
+target_include_directories(mi_dog_real_node PRIVATE include)
 ament_target_dependencies(mi_dog_real_node
   geometry_msgs nav_msgs protocol rclcpp sensor_msgs std_msgs)
 
@@ -32,6 +33,9 @@ install(TARGETS mi_dog_real_node mi_dog_supervisor_node mi_dog_state_bridge_node
   mi_dog_estop_guard_node
   DESTINATION lib/${PROJECT_NAME})
 install(PROGRAMS
+  scripts/race_controller.py
+  scripts/race_controller_offline_test.py
+  scripts/race_controller_gate_isolated_test.py
   scripts/ground_tof_capture.py
   scripts/estop_guard_isolated_test.py
   scripts/estop_hid_input.py
@@ -42,5 +46,7 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY include/
+  DESTINATION include)
 
 ament_package()

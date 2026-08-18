@@ -1,0 +1,45 @@
+/**:
+  ros__parameters:
+    # Competition-only profile. sensor_only.launch.py remains the rollback path.
+    enable_motion: true
+    arm_token: "I_UNDERSTAND_REAL_ROBOT_RISK"
+    require_sensor_ready: true
+    require_camera_ready: true
+    require_lidar_ready: true
+    require_pose_ready: true
+    # Official competition has no external E-stop input; STOP and supervisor are mandatory.
+    require_estop_ready: false
+    require_voice_start: false
+    require_supervisor_run_allowed: true
+    supervisor_timeout_sec: 0.5
+    camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
+    lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
+    ultrasonic_topic: "/mi_desktop_48_b0_2d_7a_fe_40/ultrasonic_payload"
+    pose_topic: "/mi_desktop_48_b0_2d_7a_fe_40/pose_filtered"
+    odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
+    motion_topic: "/mi_desktop_48_b0_2d_7a_fe_40/motion_servo_cmd"
+    command_topic: "/mi_dog_real/safe_cmd_vel"
+    front_clearance_summary_topic: "/mi_dog_real/front_clearance_summary"
+    supervisor_run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
+    manage_dialogue: false
+    touch_pause_enabled: true
+    sensor_timeout_sec: 1.5
+    command_timeout_sec: 0.3
+    publish_rate_hz: 10.0
+    stop_heartbeat_sec: 0.2
+    max_forward_mps: 0.15
+    max_lateral_mps: 0.08
+    max_yaw_rps: 0.30
+    max_forward_accel_mps2: 0.30
+    max_lateral_accel_mps2: 0.20
+    max_yaw_accel_rps2: 0.60
+    front_stop_distance_m: 0.35
+    front_slow_distance_m: 0.70
+    front_half_angle_rad: 0.45
+    front_lidar_self_echo_max_m: 0.32
+    front_lidar_cluster_range_jump_m: 0.12
+    front_lidar_cluster_min_samples: 4
+    front_confirmation_frames: 3
+    front_ultrasonic_extreme_stop_m: 0.20
+    max_tilt_rad: 0.60
+    step_height_m: 0.05

@@ -1,0 +1,40 @@
+Mi Dog CyberDog 2 real Servo single-END acceptance
+Date: 2026-08-18 Asia/Shanghai
+Mode: maintenance
+Robot endpoint: mi@192.168.44.1
+
+Preconditions
+- User explicitly approved one 0.05 m/s, 0.25 s forward pulse.
+- Battery 91%, wired_charging=false, power_normal=true.
+- Supervisor DOWN_WAITING, run_allowed=false, safety_reason=ready.
+- Factory stand action 111 completed: service result true, code 0, progress 100.
+- A real obstacle produced fused/lidar clearance 0.324..0.334 m and blocked progress.
+- After the user removed it, fused clearance recovered to 0.399..0.449 m,
+  lidar 0.399..0.449 m, ultrasonic 0.468..0.694 m.
+
+Active session
+- Structured START was accepted: RUNNING, run_allowed=true.
+- Observer subscribed to the installed motion_topic:
+  /mi_desktop_48_b0_2d_7a_fe_40/motion_servo_cmd
+- The single bounded forward pulse reported jog_sent=forward,
+  pulse_seconds=0.25, run_allowed=true.
+- Captured frames, in order:
+  1. cmd_type=0 (SERVO_START), vel=[0,0,0], step_height=[0,0]
+  2. cmd_type=1 (SERVO_DATA), positive forward velocity,
+     step_height=[0.05,0.05]
+  3. cmd_type=2 (SERVO_END), vel=[0,0,0], step_height=[0,0]
+- Counts were exactly START=1, DATA=1, END=1.
+- No DATA or repeated END followed the END.
+
+Stop and physical result
+- Structured STOP produced EMERGENCY_STOP/run_allowed=false.
+- Six seconds after STOP, the real Servo topic produced zero frames.
+- No BAN_TRANS or motion error 3022 was present in the acceptance window.
+- The user confirmed the robot made the expected short forward movement and
+  stopped normally.
+
+Scope note
+- robot_jog.sh publishes zero commands at the end of its bounded pulse, so this
+  run validates the new single-END active-session semantics, not an isolated
+  0.30 s command-timeout path. The earlier watchdog acceptance evidence remains
+  docs/evidence/2026-08-15_bounded_watchdog_attempt.txt.

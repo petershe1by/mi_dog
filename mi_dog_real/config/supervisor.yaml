@@ -17,6 +17,8 @@
     # Official skin-manager logic treats contactEstimate > 0 as a foot on ground.
     min_foot_contact_estimate: 0.0
     sensor_freshness_sec: 0.5
+    # Observed BMS is about 1 Hz; allow bounded scheduler jitter during video streaming.
+    bms_freshness_sec: 3.0
     stable_hold_sec: 1.5
     max_tilt_deg: 25.0
     max_linear_speed: 0.03

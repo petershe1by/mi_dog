@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+launch_mode="${1:-sensor-only}"
+if [[ "$launch_mode" != "sensor-only" && "$launch_mode" != "competition" && "$launch_mode" != "maintenance" ]]; then
+  echo "usage: run_sensor_gate.sh [sensor-only|competition|maintenance]" >&2
+  exit 2
+fi
+
 set +u
 source /opt/ros2/galactic/setup.bash
 source /opt/ros2/cyberdog/setup.bash
@@ -13,57 +19,23 @@ export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
 
 mkdir -p /home/mi/mi_dog_ws/state
 
-camera_service=/mi_desktop_48_b0_2d_7a_fe_40/camera_service
-camera_topic=/mi_desktop_48_b0_2d_7a_fe_40/image
-
-camera_frame_available() {
-  timeout 12s python3 - "$camera_topic" <<'PY'
-import sys
-import time
-
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
-from sensor_msgs.msg import Image
-
-topic = sys.argv[1]
-frames = []
-rclpy.init()
-node = Node("mi_dog_camera_startup_probe")
-subscription = node.create_subscription(
-    Image, topic, lambda message: frames.append(message), qos_profile_sensor_data)
-deadline = time.monotonic() + 10.0
-while not frames and time.monotonic() < deadline:
-    rclpy.spin_once(node, timeout_sec=0.2)
-node.destroy_subscription(subscription)
-node.destroy_node()
-rclpy.shutdown()
-if not frames:
-    raise SystemExit(1)
-PY
-}
-
-camera_active=false
-if camera_frame_available; then
-  camera_active=true
-  echo "Camera stream was already active; preserving it across service restart."
+# Starting the CSI RGB stream while the stock bringup is still activating
+# RealSense/VINS can exhaust NvCapture requests.  Launch safety nodes now and
+# let a bounded helper start RGB only after the stock system has settled.
+camera_starter=/home/mi/mi_dog_ws/scripts/start_camera_when_stable.sh
+if [[ -x "$camera_starter" ]]; then
+  "$camera_starter" &
+  echo "Deferred camera verifier started in the service cgroup (pid=$!)."
 else
-  camera_response="$(
-    timeout 20s ros2 service call "$camera_service" protocol/srv/CameraService \
-      "{command: 9, args: '', width: 640, height: 480, fps: 10}" 2>&1 || true
-  )"
-  if grep -q 'result=0' <<< "$camera_response"; then
-    camera_active=true
-    echo "Camera stream enabled at 640x480, 10 fps."
-  elif camera_frame_available; then
-    camera_active=true
-    echo "Camera stream became active even though the service response timed out."
-  fi
+  echo "Deferred camera verifier is missing; service remains fail-closed on camera." >&2
 fi
 
-if [[ "$camera_active" != true ]]; then
-  echo "Camera stream was not enabled; sensor-only service continues fail-closed." >&2
-  echo "${camera_response:-camera topic inactive}" >&2
+if [[ "$launch_mode" == "competition" ]]; then
+  echo "Starting armed competition stack in fail-closed DOWN_WAITING."
+  exec ros2 launch mi_dog_real competition.launch.py
 fi
-
-ros2 launch mi_dog_real sensor_only.launch.py
+if [[ "$launch_mode" == "maintenance" ]]; then
+  echo "Starting manual maintenance stack in fail-closed DOWN_WAITING."
+  exec ros2 launch mi_dog_real maintenance.launch.py
+fi
+exec ros2 launch mi_dog_real sensor_only.launch.py

@@ -28,6 +28,7 @@
 
 - “通过”必须有日志、话题或物理现象证据；操作者主观观察单独标注。
 - “候选阈值”不等于已经接入运动链。
-- 真机当前默认配置始终是 `enable_motion=false`。
+- 当前维护/比赛适配器为 motion-enabled，但 Supervisor 默认保持 `DOWN_WAITING/false`；比赛
+  控制器额外以 `course_calibrated=false` 默认闭锁。sensor-only launch 仍是失能回滚路径。
 - 未在本仓库保存原始日志的数据会明确写为“未留存”，不补造精度或统计量。
 - 变更代码、配置或真机部署后，必须同时更新交接总览、验收矩阵和工作记录。
