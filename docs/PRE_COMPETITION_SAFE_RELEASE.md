@@ -28,7 +28,8 @@
 
 ## 回滚
 
-回滚包必须包含源码树、工作区脚本、systemd unit、安装树和生成时的 `SHA256SUMS`。恢复时先保持
+回滚包由 `scripts/create_rollback_bundle.sh --source-commit COMMIT` 按白名单生成，必须包含源码树、
+工作区脚本、systemd unit、安装树和生成时的 `SHA256SUMS`；归档外另有 `.sha256`。恢复时先保持
 STOP，解包到临时目录并校验哈希，再按清单逐项安装；默认恢复 maintenance。若安全状态或哈希
 不一致，改用 `sensor_only.launch.py` 的 `enable_motion=false` 路径，不得启动 competition。
 
