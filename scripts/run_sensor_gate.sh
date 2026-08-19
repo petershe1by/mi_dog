@@ -19,15 +19,16 @@ export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
 
 mkdir -p /home/mi/mi_dog_ws/state
 
-# Starting the CSI RGB stream while the stock bringup is still activating
-# RealSense/VINS can exhaust NvCapture requests.  Launch safety nodes now and
-# let a bounded helper start RGB only after the stock system has settled.
+# Starting CSI RGB while stock bringup is activating can exhaust NvCapture
+# requests. Launch safety nodes now and let one long-running guard delay startup,
+# verify real frames, and bound every capture session with reliable STOP/START
+# cycles. Camera-stale gates keep motion at zero during each rest window.
 camera_starter=/home/mi/mi_dog_ws/scripts/start_camera_when_stable.sh
 if [[ -x "$camera_starter" ]]; then
   "$camera_starter" &
-  echo "Deferred camera verifier started in the service cgroup (pid=$!)."
+  echo "Guarded camera lifecycle started in the service cgroup (pid=$!)."
 else
-  echo "Deferred camera verifier is missing; service remains fail-closed on camera." >&2
+  echo "Camera lifecycle guard is missing; service remains fail-closed on camera." >&2
 fi
 
 if [[ "$launch_mode" == "competition" ]]; then

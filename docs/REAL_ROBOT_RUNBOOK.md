@@ -151,9 +151,11 @@ SSH/sudo 提示中交互输入，不存储。`pause` 应返回 `PAUSED/run_allow
 六赛段真实感知、物理验收或整场冷跑。
 
 头部 RGB 由同一 service cgroup 中的 `start_camera_when_stable.sh` 异步管理。安全节点不等待
-相机即可先进入 `DOWN_WAITING`；助手默认等系统 uptime 至少 240 秒，避开原厂
-bringup/RealSense/VINS 集中启动期，再请求 command 9。`result=0` 不是成功条件，必须实际收到
-有效 `/image` 帧。助手失败只记录日志，适配器和比赛预检继续因相机缺失而 fail-closed。
+相机即可先进入 `DOWN_WAITING`；guard 默认等系统 uptime 至少 240 秒，避开原厂
+bringup/RealSense/VINS 集中启动期。之后每个候选周期 command 9 活动 45 秒、command 10
+冷却 5 秒，并巡检实际 `/image` 帧；切换窗口内相机 stale 门使控制输出保持零。`result=0`
+不是成功条件，必须实际收到有效帧。guard 失败会尽力单次 STOP 后退出，适配器和比赛预检
+继续因相机缺失而 fail-closed。该策略在 ARM64/真机验收前仍是候选，不得标记比赛可用。
 
 2026-08-10 已完成一次真实冷启动验收：用户确认外部网线在开机、等待、唤醒和“暂停”期间
 均已拔除，随后才插回；日志显示四节点自启、口令被接受、离线提示音完成且无运动输出。

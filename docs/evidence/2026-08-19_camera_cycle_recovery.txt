@@ -1,0 +1,31 @@
+CyberDog 2 head RGB cycle recovery — 2026-08-19 Asia/Shanghai
+
+Safety state
+- Robot was wired charging and remained DOWN_WAITING/run_allowed=false.
+- No START, posture, Servo or walking command was sent.
+
+Failure reproduction
+- A clean cyberdog_bringup and nvargus-daemon restart restored real frames.
+- Continuous capture later stopped after about 67 seconds and roughly 1314 published frames.
+- Stock logs reported `NvCaptureGetRequest: Free request list is empty`, followed by
+  `Capture Scheduler not running` and a critical Argus session failure.
+
+Bounded cycle experiment
+- Stock constants confirmed START_IMAGE_PUBLISH=9 and STOP_IMAGE_PUBLISH=10.
+- After a second clean camera-stack recovery, cycle 1 published for about 63 seconds and
+  stopped successfully. Cycle 2 started after a rest, published for about 81 seconds and
+  stopped successfully.
+- A dedicated 20-second probe during cycle 2 received 201 valid images. The first was
+  640x480 bgr8 with 921600 data bytes.
+- No new NvCapture, Capture Scheduler, Argus critical-session or buffer-assignment error
+  occurred during either bounded cycle.
+- Test timing exceeded the intended 20-second windows because the first probe harness
+  timed out incorrectly and command round trips were conservative; this is recorded rather
+  than presenting the experiment as an exact-duration test.
+
+Candidate mitigation
+- start_camera_when_stable.sh now has a candidate long-running lifecycle guard: default
+  45-second active windows, 5-second rests, valid-frame checks, reliable STOP at each
+  boundary, and one fail-safe STOP on stale frames or process exit.
+- Offline success-path and stale-frame fault-injection tests pass.
+- Candidate has not yet been deployed; ARM64 isolated and no-motion real acceptance remain.
