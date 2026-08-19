@@ -31,6 +31,7 @@ def controller_command():
         "status_topic": f"{PREFIX}/status",
         "run_allowed_topic": f"{PREFIX}/run_allowed",
         "current_stage_topic": f"{PREFIX}/current_stage",
+        "perception_topic": f"{PREFIX}/course_observation",
     }
     command = [
         "ros2", "run", "mi_dog_real", "race_controller.py", "--ros-args",

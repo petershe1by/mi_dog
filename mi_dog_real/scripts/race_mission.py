@@ -9,10 +9,18 @@ REQUIRED = {
   1: ("stones_passed:4", "exit_crossed"),
   2: ("orange_touched:4", "exit_crossed"),
   3: ("lane_valid", "exit_crossed"),
-  4: ("coke_down", "orange_touched", "football_scored", "lowbars_passed:2",
+  4: ("coke_down", "stage4_orange_touched", "football_scored", "lowbars_passed:2",
       "obstacle_bypassed", "bridge_contact"),
   5: ("bridge_aligned", "all_feet_on_bridge", "all_feet_past_line", "landed"),
   6: ("football_out", "feet_in_finish:4", "stopped", "lie_down_complete"),
+}
+OBSERVATION_SCHEMA = "mi_dog_course_observation_v1"
+COUNT_FACTS = {"stones_passed", "orange_touched", "lowbars_passed", "feet_in_finish"}
+BOOL_FACTS = {
+  "exit_crossed", "lane_valid", "coke_down", "stage4_orange_touched", "football_scored",
+  "obstacle_bypassed", "bridge_contact", "bridge_aligned",
+  "all_feet_on_bridge", "all_feet_past_line", "landed", "football_out",
+  "stopped", "lie_down_complete",
 }
 
 def finite(value): return isinstance(value, (int, float)) and math.isfinite(value)
@@ -52,6 +60,15 @@ class MissionCore:
             return Decision(0.,0.,False,"LOCALIZATION_UNCERTAIN","STOP")
         facts=observation.get("facts",{})
         if not isinstance(facts,dict): return Decision(0.,0.,False,"PERCEPTION_INVALID","STOP")
+        for key,value in facts.items():
+            if key in COUNT_FACTS:
+                if isinstance(value,bool) or not isinstance(value,int) or value < 0:
+                    return Decision(0.,0.,False,"PERCEPTION_INVALID","STOP")
+            elif key in BOOL_FACTS:
+                if not isinstance(value,bool):
+                    return Decision(0.,0.,False,"PERCEPTION_INVALID","STOP")
+            else:
+                return Decision(0.,0.,False,"PERCEPTION_INVALID","STOP")
         self.checkpoint={"stage":self.stage,"facts":dict(facts),"updated":now}
         done=all(self._satisfied(facts,r) for r in REQUIRED[self.stage])
         if done:
@@ -70,4 +87,5 @@ class MissionCore:
 def parse_observation(line):
     value=json.loads(line)
     if not isinstance(value,dict): raise ValueError("observation must be object")
+    if value.get("schema") != OBSERVATION_SCHEMA: raise ValueError("observation schema mismatch")
     return value

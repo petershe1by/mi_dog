@@ -85,6 +85,10 @@ subscriptions += [
         Bool, "/mi_dog_real/supervisor/run_allowed", save("allowed"), latched),
     node.create_subscription(
         String, "/mi_dog_real/race_controller/status", save("controller"), latched),
+    node.create_subscription(
+        String, "/mi_dog_real/course_perception/status", save("perception"), latched),
+    node.create_subscription(
+        String, "/mi_dog_real/course_observation", save("observation"), 10),
 ]
 
 
@@ -107,7 +111,8 @@ deadline = time.monotonic() + 8.0
 while time.monotonic() < deadline:
     rclpy.spin_once(node, timeout_sec=0.1)
 
-missing = [key for key in ("state", "allowed", "controller", "bms", "motion")
+missing = [key for key in ("state", "allowed", "controller", "perception",
+                           "observation", "bms", "motion")
            if key not in seen]
 if missing:
     fail("missing=" + ",".join(missing))
@@ -130,6 +135,23 @@ if controller.get("geometry_source") != "official_2026_problem_pdf_page_3":
     fail("course_geometry_source=" + repr(controller.get("geometry_source")))
 if controller.get("sensors_fresh") is not True:
     fail("controller_sensors_not_fresh")
+try:
+    perception = json.loads(seen["perception"])
+    observation = json.loads(seen["observation"])
+except (TypeError, ValueError):
+    fail("invalid_perception_payload")
+if perception.get("schema") != "mi_dog_course_observation_v1":
+    fail("perception_schema=" + repr(perception.get("schema")))
+if perception.get("site_transform_valid") is not True:
+    fail("site_transform_not_calibrated")
+if perception.get("facts_are_physical_only") is not True:
+    fail("perception_fact_policy_invalid")
+if not all(perception.get("sensors_fresh", {}).values()):
+    fail("perception_sensors_not_fresh")
+if observation.get("schema") != "mi_dog_course_observation_v1":
+    fail("observation_schema=" + repr(observation.get("schema")))
+if not isinstance(observation.get("facts"), dict):
+    fail("observation_facts_invalid")
 
 bms = seen["bms"]
 if bms.power_wired_charging:
@@ -144,6 +166,7 @@ expected_nodes = {
     "/mi_dog_real",
     "/mi_dog_state_bridge",
     "/mi_dog_supervisor",
+    "/mi_dog_course_perception",
     "/mi_dog_race_controller",
 }
 node_names = [namespace.rstrip("/") + "/" + name

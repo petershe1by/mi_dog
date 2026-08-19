@@ -163,6 +163,21 @@ def main() -> int:
                 base, "/api/posture", token=token, payload={"action": "invalid"})
             assert status == 400
 
+            # Referee/operator events remain available through the sole UI
+            # backend even though manual direction and posture are denied.
+            for action, payload in (
+                    ("status", {"action": "status"}),
+                    ("pause", {"action": "pause"}),
+                    ("restart", {"action": "restart"}),
+                    ("select-stage", {"action": "select-stage", "stage": 3}),
+                    ("continue-stage", {"action": "continue-stage", "stage": 3})):
+                status, body = json_request(base, "/api/action", token=token, payload=payload)
+                assert status == 200 and body["values"]["fake_action"] == action
+            status, _ = json_request(
+                base, "/api/action", token=token,
+                payload={"action": "continue-stage", "stage": 0})
+            assert status == 400
+
             status, _ = json_request(base, "/api/camera/token")
             assert status == 403
             status, authorization = json_request(
@@ -273,6 +288,7 @@ def main() -> int:
     print("posture_soc_parameter_guard=PASS")
     print("direct_manual_script_gate=PASS")
     print("timeout_process_group_cleanup=PASS")
+    print("ui_referee_event_flow=PASS")
     return 0
 
 

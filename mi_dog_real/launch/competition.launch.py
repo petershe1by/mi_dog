@@ -15,6 +15,9 @@ def generate_launch_description():
              parameters=[f"{ROOT}/supervisor.yaml"]),
         # No external E-stop input is installed. Operator STOP, supervisor
         # permission, watchdog, tilt and lidar gates remain active.
+        Node(package="mi_dog_real", executable="course_perception.py",
+             name="mi_dog_course_perception", output="screen",
+             parameters=[f"{ROOT}/course_perception.yaml"]),
         Node(package="mi_dog_real", executable="race_controller.py",
              name="mi_dog_race_controller", output="screen",
              parameters=[f"{ROOT}/race_controller.yaml"]),

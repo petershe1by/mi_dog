@@ -39,6 +39,9 @@ install(PROGRAMS
   scripts/race_mission.py
   scripts/race_mission_offline_test.py
   scripts/race_replay.py
+  scripts/course_perception.py
+  scripts/course_perception_offline_test.py
+  scripts/course_perception_isolated_test.py
   scripts/ground_tof_capture.py
   scripts/estop_guard_isolated_test.py
   scripts/estop_hid_input.py

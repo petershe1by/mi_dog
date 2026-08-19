@@ -96,10 +96,13 @@ expect_equal supervisor_node_count \
 expect_equal state_bridge_node_count \
   "$(count_processes "$install_root/lib/mi_dog_real/mi_dog_state_bridge_node")" 1
 controller_count="$(pgrep -fc '/race_controller.py([[:space:]]|$)' || true)"
+perception_count="$(pgrep -fc '/course_perception.py([[:space:]]|$)' || true)"
 if [[ "$mode" == competition ]]; then
   expect_equal race_controller_node_count "$controller_count" 1
+  expect_equal course_perception_node_count "$perception_count" 1
 else
   expect_equal race_controller_node_count "$controller_count" 0
+  expect_equal course_perception_node_count "$perception_count" 0
 fi
 guard_count="$(count_processes "$install_root/lib/mi_dog_real/mi_dog_estop_guard_node")"
 if [[ "$mode" == sensor-only ]]; then
