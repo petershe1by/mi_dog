@@ -1,8 +1,10 @@
 /**:
   ros__parameters:
-    # Fail closed until the real course profile has been measured and each stage
-    # has passed physical validation. The distances below are placeholders.
+    # Official drawing geometry is loaded below, but randomized object poses,
+    # the start transform and physical stage results still require site work.
+    # Keep this false until every stage and one full run have passed.
     course_calibrated: false
+    geometry_source: "official_2026_problem_pdf_page_3"
     camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
     lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
     odometry_topic: "/mi_desktop_48_b0_2d_7a_fe_40/odom_out"
@@ -11,7 +13,54 @@
     status_topic: "/mi_dog_real/race_controller/status"
     run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
     current_stage_topic: "/mi_dog_real/supervisor/current_stage"
+    perception_topic: "/mi_dog_real/course_observation"
     sensor_timeout_sec: 0.6
+    perception_timeout_sec: 0.6
+    min_localization_confidence: 0.65
+    # Global drawing frame: x left-to-right, y start-to-finish, origin at the
+    # southwest outer footprint corner. Units are metres.
+    geometry.course_width_m: 4.0
+    geometry.course_length_m: 16.0
+    geometry.nominal_lane_width_m: 1.0
+    # Official prose says 15 cm (curves 10 cm); the legend says 10 cm.
+    # Retain the larger straight-line keepout until the site resolves it.
+    geometry.solid_boundary_keepout_m: 0.15
+    geometry.curve_boundary_width_m: 0.10
+    geometry.start_width_m: 4.0
+    geometry.start_length_m: 1.0
+    geometry.stone_length_m: 1.0
+    geometry.stone_width_m: 0.30
+    geometry.stone_height_m: 0.05
+    geometry.stone_gap_m: 0.20
+    geometry.stone_count: 4
+    geometry.ball_grid_width_m: 4.0
+    geometry.ball_grid_length_m: 4.0
+    geometry.ball_grid_columns: 4
+    geometry.ball_grid_rows: 4
+    geometry.ball_column_spacing_m: 1.0
+    geometry.ball_row_spacing_m: 0.64
+    geometry.ball_diameter_m: 0.20
+    geometry.stage_2_ball_bottom_height_m: 0.20
+    geometry.curve_lane_width_m: 0.60
+    geometry.curve_longitudinal_span_m: 2.0
+    geometry.search_area_width_m: 4.0
+    geometry.search_area_length_m: 4.0
+    geometry.search_channel_count: 3
+    geometry.search_channel_width_m: 1.0
+    geometry.search_channel_length_m: 2.5
+    geometry.obstacle_random_span_m: 1.5
+    geometry.stage_4_ball_bottom_height_m: 0.60
+    geometry.low_bar_length_m: 1.10
+    geometry.low_bar_section_m: 0.10
+    geometry.low_bar_clearance_m: 0.40
+    geometry.obstacle_cube_size_m: 0.20
+    geometry.obstacle_cube_gap_m: 0.20
+    geometry.goal_width_m: 0.50
+    geometry.goal_height_m: 0.30
+    geometry.goal_depth_m: 0.50
+    geometry.bridge_width_m: 0.60
+    geometry.bridge_height_m: 0.05
+    geometry.bridge_jump_before_end_m: 0.50
     # Conservative defaults. Measure and update distances during course walk-through.
     stage_1.distance_m: 2.0
     stage_1.speed_mps: 0.10

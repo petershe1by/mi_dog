@@ -124,6 +124,10 @@ except (TypeError, ValueError):
     fail("invalid_controller_status")
 if controller.get("course_calibrated") is not True:
     fail("course_not_calibrated")
+if controller.get("geometry_valid") is not True:
+    fail("course_geometry_invalid")
+if controller.get("geometry_source") != "official_2026_problem_pdf_page_3":
+    fail("course_geometry_source=" + repr(controller.get("geometry_source")))
 if controller.get("sensors_fresh") is not True:
     fail("controller_sensors_not_fresh")
 
@@ -172,6 +176,7 @@ print("state=DOWN_WAITING run_allowed=false idle_servo_frames=0")
 print("sensor_samples=" + json.dumps(counts, separators=(",", ":")))
 print(f"battery_percent={bms.batt_soc} motion_switch_status={motion.switch_status}")
 print("course_calibrated=true")
+print("course_geometry=official_2026_problem_pdf_page_3 valid=true")
 node.destroy_node()
 rclpy.shutdown()
 PY

@@ -1,0 +1,35 @@
+CyberDog 2 camera latency acceptance — 2026-08-19 Asia/Shanghai
+
+Safety and privacy scope
+- Read-only camera subscriptions; no ROS publications, posture actions, or motion commands.
+- The user explicitly approved transferring 100 test frames over SSH to the current laptop.
+- Frames were processed only in memory and were not saved.
+
+Native camera path (100 frames, 640x480 bgr8, nominal 10 fps)
+- Header stamp to ROS callback:
+  mean 26.267 ms, median 23.106 ms, p95 47.664 ms,
+  min 16.045 ms, max 84.218 ms.
+- JPEG quality 72 encode on the robot:
+  mean 7.275 ms, median 6.460 ms, p95 12.295 ms,
+  min 4.539 ms, max 34.258 ms.
+- Source frame gap:
+  mean 100.295 ms, median 100.015 ms, p95 119.854 ms,
+  min 59.003 ms, max 230.741 ms.
+- JPEG payload: mean 26.811 kB.
+
+Actual UI SSH-JPEG settings (100 frames, max 5 fps, quality 68, max width 480)
+- Time from starting a fresh SSH helper to the first complete JPEG on the laptop:
+  8622.402 ms. This is stream startup time, not steady per-frame display latency.
+- Complete JPEG arrival gap:
+  mean 236.104 ms, median 257.786 ms, p95 283.590 ms,
+  min 26.295 ms, max 345.138 ms (about 4.24 fps mean delivery rate).
+- JPEG payload: mean 14.773 kB; stream payload rate 0.500 Mbit/s.
+- Remote stderr was empty and all 100 frames arrived.
+
+Conclusion
+- The native camera path is approximately 10 fps and normally reaches the ROS subscriber
+  within 50 ms at p95.
+- The UI monitor reconnects slowly (about 8.62 s) but then provides a stable low-bandwidth
+  approximately 4.24 fps stream. This UI stream is for monitoring and does not feed autonomy.
+- A literal photon-to-browser-pixel measurement would require an optical clock visible in the
+  scene and a synchronized recording of the display; it was not fabricated from startup time.

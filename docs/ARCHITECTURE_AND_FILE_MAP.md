@@ -74,6 +74,9 @@ launch 仍保留它。
 | `mi_dog_real/config/this_robot_sensor_only.yaml` | 失能回滚配置和实测 topic 映射 |
 | `mi_dog_real/config/this_robot_competition.yaml` | maintenance/competition 共用的 motion-enabled 最终适配配置 |
 | `mi_dog_real/config/race_controller.yaml` | 真机比赛骨架参数；默认课程未标定闭锁 |
+| `docs/OFFICIAL_COURSE_GEOMETRY.md` | 官方 PDF 固定尺寸、坐标约定、边界冲突和现场校准输入 |
+| `mi_dog_real/scripts/race_mission.py` | 统一感知契约、定位置信度门、六赛段事实门和检查点快照 |
+| `mi_dog_real/scripts/race_replay.py` | JSONL 离线回放；不导入 ROS 或运动接口 |
 | `mi_dog_real/config/real_robot.yaml` | 通用保守模板，默认仍关闭运动 |
 | `mi_dog_real/config/supervisor.yaml` | supervisor 话题、阈值、新鲜度和检查点路径 |
 | `mi_dog_real/config/estop_guard.yaml` | 急停原始输入、输出、状态、0.25 秒超时及 20 Hz 心跳 |
@@ -118,6 +121,7 @@ launch 仍保留它。
 | `/mi_dog_real/proximity_summary` | `Float32MultiArray` | 状态桥 | 超声、头左/右、后左/右，单位米 |
 | `/mi_dog_real/head_ground_roi_summary` | `Float32MultiArray` | 状态桥 | 左右 p25/中值/有效比例，只读诊断 |
 | `/mi_dog_real/safe_cmd_vel` | `geometry_msgs/Twist` | 未来高层控制器 | 300 ms 超时；当前无正式生产者 |
+| `/mi_dog_real/course_observation` | `std_msgs/String` JSON | 真机感知节点 | 0.6 s 过期；缺失/非法/低定位置信度均零输出 |
 | `/mi_dog_real/emergency_stop_input` | `std_msgs/Bool` | 可选兼容实体接口 | 赛事不要求；当前无生产者，守卫保持急停 true |
 | `/mi_dog_real/emergency_stop_hid/status` | `std_msgs/String` | 可选 HID 原型 | 正式服务不启动，不能据此选择狗的 Type-C 口 |
 | `/mi_dog_real/emergency_stop` | `std_msgs/Bool` | 急停守卫 | 20 Hz；启动、断线、超时或按下均为 `true` |
