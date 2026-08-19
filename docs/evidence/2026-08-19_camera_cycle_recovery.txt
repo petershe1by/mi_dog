@@ -23,9 +23,19 @@ Bounded cycle experiment
   timed out incorrectly and command round trips were conservative; this is recorded rather
   than presenting the experiment as an exact-duration test.
 
-Candidate mitigation
-- start_camera_when_stable.sh now has a candidate long-running lifecycle guard: default
+Accepted mitigation
+- start_camera_when_stable.sh now has a long-running lifecycle guard: default
   45-second active windows, 5-second rests, valid-frame checks, reliable STOP at each
   boundary, and one fail-safe STOP on stale frames or process exit.
 - Offline success-path and stale-frame fault-injection tests pass.
-- Candidate has not yet been deployed; ARM64 isolated and no-motion real acceptance remain.
+- ARM64 fake-interface isolation passed before deployment.
+- The deployed maintenance service then completed its first three real cycles. Each cycle
+  logged one START and one STOP and the stock camera logged a fresh `Publishing image #0`.
+  No new NvCapture, Capture Scheduler, Argus critical-session or buffer-assignment error
+  appeared during the three-cycle acceptance window.
+- A final read-only audit passed with DOWN_WAITING/run_allowed=false, idle Servo zero,
+  lidar and odometry active, battery 87% and wired charging true. The audit landed in a
+  five-second camera rest window and therefore observed zero camera frames; the three
+  active-window frame sequences above are the camera acceptance evidence.
+- Previous deployed scripts are recoverable from
+  `/home/mi/mi_dog_ws/state/camera_guard_backup_9471737/`.
