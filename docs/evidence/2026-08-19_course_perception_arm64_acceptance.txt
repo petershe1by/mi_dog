@@ -1,0 +1,41 @@
+CyberDog 2 real course perception framework acceptance — 2026-08-19 Asia/Shanghai
+
+Scope and safety
+- Source commit: 0488dcd.
+- No competition service switch, START, posture, Servo or walking command was sent.
+- Robot stayed in maintenance, DOWN_WAITING/run_allowed=false and wired charging.
+
+Implemented contract
+- course_perception.py consumes stock Image, LaserScan, Odometry and supervisor stage.
+- It emits schema mi_dog_course_observation_v1 with sensor freshness, conservative colour
+  candidates, front clearance, site localization state and an empty physical facts map.
+- site_transform_valid defaults false. Localization confidence therefore remains zero until
+  the real start origin and yaw are measured.
+- Mission parsing now rejects wrong schemas, unknown fact keys, strings used as counts,
+  booleans used as counts and non-boolean completion facts.
+- The old orange_touched type ambiguity was removed: stage 2 uses the orange_touched count;
+  stage 4 uses the distinct stage4_orange_touched boolean.
+
+Observed tests
+- Local pure-Python colour, localization, jump, schema and six-stage tests: PASS.
+- Local UI referee event flow, competition manual-control denial, write serialization and
+  STOP lock bypass: PASS.
+- ARM64 colcon build: PASS, one package, 6.66 seconds.
+- ARM64 installed pure-Python tests: PASS.
+- ARM64 isolated ROS producer: fresh inputs PASS, image stale PASS, no synthetic facts PASS.
+- ARM64 isolated controller course gate: 16 command samples, all zero, no stage completion.
+- ARM64 Servo, power, stage-select and E-stop isolated suites: PASS.
+- Installed producer/config SHA256 matched the local source.
+
+Final read-only state
+- maintenance active; formal adapter, supervisor and state bridge single-instance.
+- race controller and course perception process counts zero in maintenance.
+- DOWN_WAITING/run_allowed=false, idle Servo zero, lidar and odometry active.
+- Battery 84%, wired charging true, motion switch status 14 (charging inhibit).
+- competition_preflight.sh refused service_not_in_competition_mode as designed.
+
+Remaining physical evidence
+- Real object images/labels and error rates for every competition object.
+- Measured site origin/yaw, drift and replacement relocalization.
+- Physical facts, each stage and one complete course run. course_calibrated and
+  site_transform_valid must remain false until those pass.
