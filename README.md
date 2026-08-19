@@ -7,14 +7,16 @@
 - [`docs/README.md`](docs/README.md)：完整文档导航。
 - [`docs/PROJECT_HANDOFF.md`](docs/PROJECT_HANDOFF.md)：目标、当前状态、已完成工作和接手步骤。
 - [`docs/REAL_ROBOT_RUNBOOK.md`](docs/REAL_ROBOT_RUNBOOK.md)：比赛与日常真机操作手册。
+- [`docs/FIELD_OPERATOR_MANUAL.md`](docs/FIELD_OPERATOR_MANUAL.md)：从上电到赛后关机的现场操作者手册。
 - [`docs/COMPETITION_DAY_CHECKLIST.md`](docs/COMPETITION_DAY_CHECKLIST.md)：比赛日流程和规则边界。
 - [`docs/REAL_ROBOT_TEST_DATA.md`](docs/REAL_ROBOT_TEST_DATA.md)：真机全部保留测量数据。
 - [`docs/PENDING_REAL_ROBOT_TESTS.md`](docs/PENDING_REAL_ROBOT_TESTS.md)：尚未完成的真机测试与实现任务单。
 - [`docs/ARCHITECTURE_AND_FILE_MAP.md`](docs/ARCHITECTURE_AND_FILE_MAP.md)：架构、接口和文件位置。
 - [`docs/ROADMAP.md`](docs/ROADMAP.md)：下一步与最终完成条件。
 
-当前边界：Gazebo 六赛段已完成；真机只读接入、电脑操作和 supervisor 安全门已完成基础
-验收，但真机六赛段感知与控制尚未实现。正式真机配置保持 `enable_motion=false`。
+当前边界：Gazebo 六赛段已完成；真机传感器、电脑/UI 操作、基础低速运动和 supervisor 安全门
+已完成验收。maintenance/competition 适配器为 `enable_motion=true`，但比赛控制器保持
+`course_calibrated=false`，真实六赛段事实感知和现场标定尚未完成，不能正式自主开赛。
 
 ## 比赛资料
 

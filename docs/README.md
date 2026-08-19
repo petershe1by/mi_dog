@@ -5,15 +5,16 @@
 
 1. [项目交接总览](PROJECT_HANDOFF.md)：目标、当前状态、已完成内容、阻塞项和接手步骤。
 2. [架构与文件地图](ARCHITECTURE_AND_FILE_MAP.md)：数据流、节点职责、接口和每个文件的位置。
-3. [真机操作手册](REAL_ROBOT_RUNBOOK.md)：联网、开机检查、电脑启动/暂停/重启、日志和关机。
-4. [比赛控制 UI](COMPETITION_UI.md)：默认比赛模式、一键操作、维护控制安全门和 XTerminal/SSH。
-5. [组委会确认单](ORGANIZER_CONFIRMATION.md)：电脑操作、端口、离线架构及待确认恢复细节的记录。
-6. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
-7. [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)：需要补测、尚未实现和现场确认的可勾选任务。
-8. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
-9. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
-10. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
-11. [路线图](ROADMAP.md)：最终目标、下一步、完成条件和安全顺序。
+3. [比赛现场完整操作手册](FIELD_OPERATOR_MANUAL.md)：从上电、UI、预检、开赛、暂停/放回到赛后关机。
+4. [真机技术操作手册](REAL_ROBOT_RUNBOOK.md)：联网、开机检查、电脑启动/暂停/重启、日志和关机。
+5. [比赛控制 UI](COMPETITION_UI.md)：默认比赛模式、一键操作、维护控制安全门和 XTerminal/SSH。
+6. [组委会确认单](ORGANIZER_CONFIRMATION.md)：电脑操作、端口、离线架构及待确认恢复细节的记录。
+7. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
+8. [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)：需要补测、尚未实现和现场确认的可勾选任务。
+9. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
+10. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
+11. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
+12. [路线图](ROADMAP.md)：下一步、完成条件和安全顺序。
 
 现有专题文档：
 

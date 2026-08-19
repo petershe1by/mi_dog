@@ -24,14 +24,14 @@
 绕过互斥锁立即派发。这里只证明 STOP 请求不被 UI 锁阻塞，不把它扩大解释成能取消任意已开始的
 原厂姿态动作。命令超时会终止整个本机脚本/SSH 进程组，避免遗留后台控制连接。UI 提供：
 
-- 实时服务、supervisor、赛段、运行许可、运动总开关、电量、充电状态、电池温度和安全原因；
+- 实时服务、supervisor、赛段、运行许可、运动总开关、电量、充电状态、电池温度和趴下安全原因；
 - 一键 START、PAUSE、STOP（失能）和服务重启；
 - 选择赛段 1..6 并发送 CONTINUE；赛段选择只允许在 `DOWN_WAITING/PAUSED`，会先持久化
   检查点，选择本身不会开放运动许可；
 - 仅限维护模式的六向低速调试移动和 STOP；每次非零按钮只产生 0.25 秒脉冲，并同时要求真机
   电量不低于 supervisor 的实时下限、未接充电线、`enable_motion=True` 与
-  `run_allowed=true`。当前运行下限为 30%，正式配置为 `enable_motion=False`，所以按钮按设计
-  拒绝，直到物理停止链完成验收；
+  `run_allowed=true`。当前运行下限为 30%；基础六向低速脉冲和停止链已经真机验收，但这些按钮
+  在正式比赛模式仍由后端锁定；
 - 仅限维护模式的起立与安全趴下按钮。两者只调用真机已识别的原厂动作号 `111/101`，并要求电量达标、未接
   充电线、BMS 正常、无运控错误、处于 `DOWN_WAITING/PAUSED` 且 `run_allowed=false`；趴下还
   要求 supervisor 的 `safe_to_lie_down=true` 和 `lie_down_safety_reason=ready`。脚本还要求
@@ -40,6 +40,9 @@
   640×480 原始图像转为 JPEG/MJPEG；不安装文件到狗上，关闭画面后立即终止进程。源配置上限
   为 10 fps，已留档的 ROS 话题测量约 8.14–9.46 fps，UI 会显示实际接收帧率和带宽；
 - SSH 连接信息与状态测试。
+
+页面的“趴下安全原因”来自 `lie_down_safety_reason`，只用于判断原厂动作 101 的许可，不是
+START 的完整拒绝原因。正式开赛以 `competition_preflight.sh` 的 `PREFLIGHT=PASS` 为准。
 
 只有在赛前维护、防护工装和人工监护条件齐全时，才能显式启动维护控制：
 
