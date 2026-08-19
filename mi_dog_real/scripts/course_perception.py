@@ -32,15 +32,20 @@ class SiteLocalization(object):
         self.transform_valid = bool(transform_valid)
         self.max_jump_m = float(max_jump_m)
         self.previous = None
+        self.fault_latched = False
 
     def update(self, odom_x, odom_y, odom_yaw):
         if not all(_finite(value) for value in (odom_x, odom_y, odom_yaw)):
             self.previous = None
+            self.fault_latched = True
             return None, 0.0, "ODOM_INVALID"
+        if self.fault_latched:
+            return None, 0.0, "ODOM_FAULT_LATCHED"
         jump = 0.0 if self.previous is None else math.hypot(
             odom_x - self.previous[0], odom_y - self.previous[1])
         self.previous = (odom_x, odom_y)
         if jump > self.max_jump_m:
+            self.fault_latched = True
             return None, 0.0, "ODOM_JUMP"
         if not self.transform_valid:
             return None, 0.0, "SITE_TRANSFORM_UNCALIBRATED"

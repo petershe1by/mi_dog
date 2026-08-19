@@ -146,12 +146,22 @@ if perception.get("site_transform_valid") is not True:
     fail("site_transform_not_calibrated")
 if perception.get("facts_are_physical_only") is not True:
     fail("perception_fact_policy_invalid")
-if not all(perception.get("sensors_fresh", {}).values()):
+required_fresh = {"image", "scan", "odom"}
+perception_fresh = perception.get("sensors_fresh", {})
+if set(perception_fresh) != required_fresh or not all(perception_fresh.values()):
     fail("perception_sensors_not_fresh")
 if observation.get("schema") != "mi_dog_course_observation_v1":
     fail("observation_schema=" + repr(observation.get("schema")))
 if not isinstance(observation.get("facts"), dict):
     fail("observation_facts_invalid")
+if observation.get("site_transform_valid") is not True:
+    fail("observation_site_transform_invalid")
+observation_fresh = observation.get("sensors_fresh", {})
+if set(observation_fresh) != required_fresh or not all(observation_fresh.values()):
+    fail("observation_sensors_not_fresh")
+confidence = observation.get("localization_confidence")
+if not isinstance(confidence, (int, float)) or confidence < 0.65:
+    fail("observation_localization_uncertain")
 
 bms = seen["bms"]
 if bms.power_wired_charging:

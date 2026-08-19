@@ -46,6 +46,11 @@ cp -a "$scripts_tree" "$payload/workspace/scripts"
 cp -a "$install_tree" "$payload/workspace/install/mi_dog_real"
 cp -a "$unit_file" "$payload/etc/systemd/system/mi-dog-real-sensor.service"
 
+# Python bytecode is host/runtime-specific and must not make a release archive
+# non-reproducible or obscure the corresponding source file.
+find "$payload" -type d -name __pycache__ -prune -exec rm -rf -- {} +
+find "$payload" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
+
 # The allowlist above must never acquire runtime or credential artifacts.
 if find "$payload" -type f \( \
      -name '*.pem' -o -name '*.key' -o -name 'id_rsa*' -o -name 'id_ed25519*' \

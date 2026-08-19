@@ -1,0 +1,56 @@
+# 2026-08-19 release audit and fail-closed hardening
+
+Scope
+- Full source, documentation, rollback-package and deployment consistency audit.
+- No START, posture or walking command was issued.
+- Robot remained in maintenance and was wired charging for the final audit.
+
+Defects corrected
+1. race_controller independently calculated raw image/scan/odom freshness but did not gate output.
+   It now publishes zero with SENSOR_STALE whenever that independent gate fails.
+2. SiteLocalization rejected an odom discontinuity for only one update. Odom invalidity or a jump now
+   latches the localization fault until the process is deliberately restarted/recalibrated.
+3. The camera activity deadline started after service-call and first-frame verification. It now starts
+   before START_IMAGE_PUBLISH, bounding the wall-clock capture window.
+4. competition_preflight accepted an empty sensors_fresh map because all({}.values()) is true. It now
+   requires exactly image/scan/odom, all true, in both perception status and observation; it also checks
+   site_transform_valid and localization confidence >= 0.65.
+5. Rollback bundle creation now removes __pycache__, *.pyc and *.pyo artifacts before hashing.
+
+Local acceptance
+- Python compile: PASS
+- course_perception offline: PASS (colour, localization fail-closed, no synthetic facts)
+- race_mission offline: PASS (six stages, fail closed, checkpoint)
+- race_controller offline: PASS (sequence, invalid inputs, calibration gate, official geometry)
+- camera guard offline fault injection: PASS
+- rollback bundle offline, including bytecode exclusion: PASS
+- competition UI offline: PASS (competition manual deny, concurrency, STOP bypass, camera token,
+  stderr drain, posture SOC guard, direct script gate, process cleanup and referee event flow)
+- shell syntax and git diff check: PASS
+
+ARM64 acceptance
+- colcon build --packages-select mi_dog_real --symlink-install: PASS (4 min 22 s)
+- course_perception offline and isolated fresh/stale/no-facts: PASS
+- race controller course calibration gate isolated: all commands zero, no completion, PASS
+- new raw-sensor stale isolated test: fresh candidate observed; image stale forced zero and
+  SENSOR_STALE, PASS
+- All isolated topics used /mi_dog_test/... and did not connect to real motion_servo_cmd.
+
+Camera wall-clock acceptance after maintenance restart at 17:17:46 CST
+- Cycle 1 START 17:17:55, STOP 17:18:40: 45 s
+- Cycle 2 START 17:18:49, STOP 17:19:34: 45 s
+- Cycle 3 START 17:19:42, STOP 17:20:27: 45 s
+- No error/failed/BAN_TRANS/3022/NvCapture/Argus/traceback match in the service journal.
+
+Final read-only audit
+- service active/enabled, mode maintenance
+- one real, supervisor and state-bridge node; zero race controller, course perception, estop guard/HID
+- enable_motion=True, manage_dialogue=False, require_supervisor_run_allowed=True, min SOC=30
+- supervisor DOWN_WAITING, run_allowed=false
+- 8 seconds: camera=50, lidar=44, odom=281, idle Servo=0
+- battery=83%, wired_charging=true, motion_switch_status=14 (expected charging inhibit)
+- READ_ONLY_AUDIT=PASS
+
+Known intentional blocker
+- course_perception still emits facts={}; physical object recognition, site calibration and all six
+  stage facts are not implemented/validated. course_calibrated=false must remain unchanged.

@@ -129,6 +129,7 @@ cycle=0
 while (( max_cycles == 0 || cycle < max_cycles )); do
   cycle=$((cycle + 1))
   echo "Head RGB guarded cycle $cycle: START_IMAGE_PUBLISH."
+  cycle_started=$SECONDS
   call_camera 9
   camera_active=1
   if ! camera_frame_available 10; then
@@ -136,7 +137,9 @@ while (( max_cycles == 0 || cycle < max_cycles )); do
     exit 1
   fi
 
-  deadline=$((SECONDS + active_window_sec))
+  # Bound wall-clock capture lifetime from before the START call. Service
+  # latency and initial frame verification count against the active window.
+  deadline=$((cycle_started + active_window_sec))
   while (( SECONDS < deadline )); do
     remaining=$((deadline - SECONDS))
     sleep_for="$probe_interval_sec"

@@ -27,6 +27,8 @@ pose, confidence, state = l.update(1., 3., math.pi/2.)
 assert abs(pose[0]-1.) < 1e-9 and abs(pose[1]) < 1e-9 and confidence >= .65
 pose, confidence, state = l.update(2., 3., math.pi/2.)
 assert pose is None and confidence == 0. and state == "ODOM_JUMP"
+pose, confidence, state = l.update(2.01, 3., math.pi/2.)
+assert pose is None and confidence == 0. and state == "ODOM_FAULT_LATCHED"
 assert abs(m.yaw_from_quaternion(0., 0., 0., 1.)) < 1e-9
 try: m.extract_colour_features(blank, width, height, "mono8", step, 3, 6); raise AssertionError()
 except ValueError: pass

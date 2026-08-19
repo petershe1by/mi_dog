@@ -10,6 +10,8 @@ mkdir -p "$workspace/src/mi_dog_real" "$workspace/scripts" \
 printf 'source\n' >"$workspace/src/mi_dog_real/file.cpp"
 printf 'script\n' >"$workspace/scripts/tool.sh"
 printf 'binary\n' >"$workspace/install/mi_dog_real/node"
+mkdir -p "$workspace/src/mi_dog_real/__pycache__"
+printf 'bytecode\n' >"$workspace/src/mi_dog_real/__pycache__/stale.cpython-38.pyc"
 printf 'unit\n' >"$temporary/etc/mi-dog-real-sensor.service"
 
 mapfile -t outputs < <(
@@ -32,4 +34,5 @@ grep -q '^source_commit=200215e$' "$temporary/unpacked/METADATA.txt"
 [[ -f "$temporary/unpacked/workspace/scripts/tool.sh" ]]
 [[ -f "$temporary/unpacked/workspace/install/mi_dog_real/node" ]]
 [[ -f "$temporary/unpacked/etc/systemd/system/mi-dog-real-sensor.service" ]]
+! find "$temporary/unpacked" \( -type d -name __pycache__ -o -type f -name '*.py[co]' \) -print -quit | grep -q .
 echo 'create_rollback_bundle_offline_test=PASS'

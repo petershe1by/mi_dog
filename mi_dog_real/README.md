@@ -111,22 +111,25 @@
 `enable_motion=true`，但没有自主比赛控制器，且重启强制回到 `DOWN_WAITING/false`。比赛 launch
 包含 `race_controller.py`，其 `course_calibrated=false` 默认闭锁会在未测量课程参数时保持零输出；
 不得仅把该参数改成 true 就宣称六赛段可用。
-启动脚本优先复用已有 `/image`；未激活时才请求原厂相机服务输出 640x480、10 fps 图像，
-失败时保持服务在线并明确记录相机未启用。由于原厂 command 10 后 command 9 可能卡住，
-本服务退出/重启时不再关闭相机，整机关闭由原厂生命周期统一处理。2026-08-12 手工回放中
-该调用返回 `result=0/code=0`，8 秒取得 76 帧（约 9.46 Hz，`bgr8`），随后关闭成功。
+相机 guard 会先等待原厂 bringup 稳定，再停止可能继承的旧流并按 45 秒活动、5 秒冷却周期
+调用原厂服务。START 后必须收到新的 640x480、10 fps 实际图像帧才算成功；活动窗口从调用
+START 前开始计时，避免服务调用和首帧等待把真实采集时长拖长。失败或丢帧时只发送一次 STOP
+并重试，不把“服务返回成功”误当成相机可用。2026-08-19 计时边界修正版完成 ARM64 部署；
+真机连续三轮 START→STOP 均严格为 45 秒，每轮都有新帧且无新增 NvCapture/Argus 错误。
 赛事不要求额外实体急停，maintenance/competition launch 不启动急停守卫或 HID 原型；
 sensor-only 回滚 launch 仍保留守卫。其 ARM64 隔离测试结果只证明兼容代码，不是比赛前置条件。
-`lie_down_request` 目前只是请求话题。安全门已经完成姿态、速度、四足接触、控制器和 BMS 的
-只读检查；有线充电时固定输出 `safe_to_lie_down=false` 和 `run_allowed=false`，原因为
-`wired_charging_motion_inhibited`。落脚面/边缘与周围空间检查完成前，仍不能连接真实
-趴下动作；四足接触只能证明腿没有抬起，不能证明当前位置适合趴下。
+`lie_down_request` 仍只是自动任务层的请求话题，尚未连接赛段 6 的自动执行器。UI 的人工姿态
+路径已经在满足安全输入时分别完成原厂动作 111 起立和 101 安全趴下真机验收，但这不能替代
+终点自动停稳、地面/空间判断和动作反馈闭环。有线充电时固定输出
+`safe_to_lie_down=false` 和 `run_allowed=false`，原因为 `wired_charging_motion_inhibited`。
 
 比赛任务层使用 `/mi_dog_real/course_observation` 的 JSON 观测契约。每条观测包含同机单调时钟、
 定位置信度、前方净空、航向误差和赛段事实；超过 0.6 秒、置信度低于 0.65、字段非法或缺失时
 固定零输出。六关分别要求四板与出口、四枚橙球与出口、有效车道与出口、赛段四全部目标/障碍、
 桥面四阶段和终点足球/四足/停稳/趴下事实。`race_replay.py` 可用 JSONL 在离线电脑回放，不连接
-ROS 或机器狗。真实视觉生产者和现场阈值尚未验收，因此 `course_calibrated=false` 保持不变。
+ROS 或机器狗。真实观测生产者骨架已实现黄色/橙色候选、前向净空和 odom 站点变换，并通过
+离线与 ARM64 隔离测试；它仍故意发布空 `facts`，尚未实现六关对象/完成事实，且现场阈值与
+站点变换未标定，因此 `course_calibrated=false` 必须保持不变。
 
 2026-08-09 首次站立标定中，起立响应为 `mode=12, progress=100`，全程没有速度指令。
 四足接触仍为 `[0.5, 0.5, 0.5, 0.5]`；站立测距约为头部左右
@@ -232,11 +235,12 @@ ros2 run mi_dog_real mi_dog_real_node --ros-args --params-file \
 
 先执行 `ros2 topic list`，确认并按实际版本覆盖 `camera_topic`、`lidar_topic`、`pose_topic`。本机固件使用动态命名空间；`config/this_robot_sensor_only.yaml` 记录了 2026-08-05 实测映射。相机当前未激活，因此首次测试不把相机作为安全就绪条件。确认雷达和姿态数据、急停、站立状态及安全场地前，不得开启运动。
 
-当前只批准传感器模式。官方消息常量和 ARM64 隔离话题的
-`SERVO_START/DATA/END` 时序已经验证，但真实运控话题的物理停止链仍需在防护工装上完成，
-因此不得设置 `enable_motion=true`。
+本节是首次接入时的历史保守流程。当前 maintenance 配置已经是 `enable_motion=true`，但启动
+状态固定为 `DOWN_WAITING/run_allowed=false`；真实低速六向脉冲、watchdog、许可超时、STOP、
+服务重启闭锁及严格单次 `START/DATA/END` 均已有真机证据。课程控制器仍由
+`course_calibrated=false` 闭锁，不得据此启动赛道自治。
 
-## 受控运动（当前锁定）
+## 受控运动（历史准入要求，现已完成基础链验收）
 
 不得在当前版本设置下列值。只有先完成零速度 `SERVO_START/DATA/END` 时序，以及电脑暂停、
 服务重启、许可撤销、命令 watchdog 和链路中断停止验证，并由现场负责人批准后，才可进入
@@ -251,5 +255,6 @@ arm_token:=I_UNDERSTAND_REAL_ROBOT_RISK
 但不得直接修改现有模板绕过门控。第一轮只测试零速度、电脑暂停/重启、许可撤销和停止
 watchdog；不运行赛道自治、极低速直行或跳跃。
 
-> 当前包已在这台 CyberDog 2 的 ARM64/ROS 2 Galactic 环境编译并以传感器模式运行；
-> 非零运动模式的命令时序和安全链仍未完成验收，因此不得设置 `enable_motion=true`。
+> 当前包已在这台 CyberDog 2 的 ARM64/ROS 2 Galactic 环境编译并以 maintenance 模式运行；
+> 基础非零运动和停止安全链已完成有界真机验收，但六赛段感知、现场定位和整场自治仍未完成，
+> `course_calibrated` 必须继续为 false。

@@ -260,6 +260,10 @@ def main():
             mission = self.mission.step(self.observation, self.allowed, now)
             if self.xy is None:
                 result = (0.0, 0.0, None, 0.0, "WAITING_ODOM")
+            elif not fresh:
+                # Never trust a syntactically valid observation to override
+                # the controller's independent raw-sensor freshness gate.
+                result = (0.0, 0.0, None, 0.0, "SENSOR_STALE")
             elif mission.state != "RUNNING" and mission.state != "STAGE_COMPLETE":
                 result = (0.0, 0.0, None, 0.0, mission.state)
             elif mission.state == "STAGE_COMPLETE":
