@@ -5,6 +5,7 @@ target="${MI_DOG_TARGET:-mi@192.168.44.1}"
 action=""
 stage=""
 connect_timeout=5
+fast_event="${MI_DOG_FAST_EVENT:-0}"
 
 usage() {
   cat <<'EOF'
@@ -79,6 +80,8 @@ ssh_options=(
 if [[ -n "${MI_DOG_SSH_CONTROL_PATH:-}" ]]; then
   ssh_options+=(
     -o "ControlPath=$MI_DOG_SSH_CONTROL_PATH"
+    -o ControlMaster=auto
+    -o ControlPersist=30
   )
 fi
 if [[ "${MI_DOG_SSH_BATCH_MODE:-0}" == 1 ]]; then
@@ -134,24 +137,21 @@ case "$action" in
 esac
 
 transport_event="${event:-NONE}"
-ssh "${ssh_options[@]}" "$target" bash -s -- "$transport_event" "$stage" <<'REMOTE_CONTROL'
+transport_stage="${stage:-NONE}"
+[[ "$fast_event" == 0 || "$fast_event" == 1 ]] || {
+  echo "MI_DOG_FAST_EVENT must be 0 or 1." >&2; exit 2; }
+ssh "${ssh_options[@]}" "$target" bash -s -- "$transport_event" "$transport_stage" "$fast_event" <<'REMOTE_CONTROL'
 set -eo pipefail
 
-set +u
-source /opt/ros2/galactic/setup.bash 2>/dev/null
-source /opt/ros2/cyberdog/setup.bash 2>/dev/null
-source /home/mi/mi_dog_ws/install/setup.bash 2>/dev/null
-set -u
-export ROS_DOMAIN_ID=42
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
+source /home/mi/mi_dog_ws/scripts/load_live_ros_env.sh
 
 echo "service_active=$(systemctl is-active mi-dog-real-sensor.service 2>/dev/null || true)"
 
 event="${1:-NONE}"
 [[ "$event" == NONE ]] && event=""
 stage="${2:-}"
-python3 - "$event" "$stage" <<'PY'
+[[ "$stage" == NONE ]] && stage=""
+python3 - "$event" "$stage" "${3:-0}" <<'PY'
 import sys
 import time
 
@@ -167,7 +167,8 @@ from rclpy.qos import (
 )
 from std_msgs.msg import Bool, Int32, String
 
-event, stage_arg = sys.argv[1:]
+event, stage_arg, fast_arg = sys.argv[1:]
+fast_event = fast_arg == "1"
 allowed_events = {"", "START", "CONTINUE", "PAUSE", "STOP"}
 if event not in allowed_events:
     raise SystemExit("Refusing unknown operator event")
@@ -237,6 +238,68 @@ subscriptions.append(node.create_subscription(
     MotionStatus, "/mi_desktop_48_b0_2d_7a_fe_40/motion_status",
     save_motion_status, qos_profile_sensor_data))
 
+# Dispatch the requested safety/supervisor event before collecting display-only
+# parameters. The supervisor remains the authority and rejects unsafe starts.
+stage_publisher = None
+selected_stage = int(stage_arg) if stage_arg else None
+if selected_stage is not None:
+    if selected_stage not in range(1, 7):
+        raise SystemExit("Refusing stage outside 1..6")
+    stage_publisher = node.create_publisher(
+        Int32, "/mi_dog_real/supervisor/select_stage", QoSProfile(depth=10))
+    deadline = time.monotonic() + 2.0
+    while stage_publisher.get_subscription_count() < 1 and time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.05)
+    if stage_publisher.get_subscription_count() < 1:
+        raise SystemExit("Supervisor stage-select subscriber is unavailable")
+    message = Int32()
+    message.data = selected_stage
+    stage_publisher.publish(message)
+    deadline = time.monotonic() + 3.0
+    while time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.05)
+        if values.get("stage") == str(selected_stage):
+            break
+    if values.get("stage") != str(selected_stage):
+        raise SystemExit(
+            f"Stage selection rejected; current stage={values.get('stage', '<missing>')}")
+    print(f"stage_selected={selected_stage}")
+
+publisher = None
+if event:
+    publisher = node.create_publisher(
+        String, "/mi_dog_real/operator_event", QoSProfile(depth=10))
+    deadline = time.monotonic() + 2.0
+    while publisher.get_subscription_count() < 1 and time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.05)
+    if publisher.get_subscription_count() < 1:
+        raise SystemExit("Supervisor operator-event subscriber is unavailable")
+    message = String()
+    message.data = event
+    publisher.publish(message)
+    print(f"event_sent={event}")
+
+if fast_event and event:
+    expected_state = {
+        "START": "RUNNING", "CONTINUE": "RUNNING",
+        "PAUSE": "PAUSED", "STOP": "EMERGENCY_STOP",
+    }[event]
+    deadline = time.monotonic() + 1.5
+    while time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.05)
+        if (values.get("state") == expected_state and
+                "stage" in values and "run_allowed" in values):
+            break
+    for key in ("state", "stage", "run_allowed"):
+        print(f"{key}={values.get(key, '<missing>')}")
+    node.destroy_node()
+    rclpy.shutdown()
+    if values.get("state") != expected_state:
+        raise SystemExit(
+            f"event_rejected={event}; expected_state={expected_state}; "
+            f"actual_state={values.get('state', '<missing>')}")
+    raise SystemExit(0)
+
 enable_motion = "unknown"
 parameter_client = node.create_client(GetParameters, "/mi_dog_real/get_parameters")
 if parameter_client.wait_for_service(timeout_sec=2.0):
@@ -259,45 +322,6 @@ if supervisor_parameter_client.wait_for_service(timeout_sec=2.0):
     if future.done() and future.result() and future.result().values:
         min_battery_soc = str(future.result().values[0].integer_value)
 print(f"min_battery_soc={min_battery_soc}")
-
-stage_publisher = None
-selected_stage = int(stage_arg) if stage_arg else None
-if selected_stage is not None:
-    if selected_stage not in range(1, 7):
-        raise SystemExit("Refusing stage outside 1..6")
-    stage_publisher = node.create_publisher(
-        Int32, "/mi_dog_real/supervisor/select_stage", QoSProfile(depth=10))
-    deadline = time.monotonic() + 2.0
-    while stage_publisher.get_subscription_count() < 1 and time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-    if stage_publisher.get_subscription_count() < 1:
-        raise SystemExit("Supervisor stage-select subscriber is unavailable")
-    message = Int32()
-    message.data = selected_stage
-    stage_publisher.publish(message)
-    deadline = time.monotonic() + 3.0
-    while time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if values.get("stage") == str(selected_stage):
-            break
-    if values.get("stage") != str(selected_stage):
-        raise SystemExit(
-            f"Stage selection rejected; current stage={values.get('stage', '<missing>')}")
-    print(f"stage_selected={selected_stage}")
-
-publisher = None
-if event:
-    publisher = node.create_publisher(
-        String, "/mi_dog_real/operator_event", QoSProfile(depth=10))
-    deadline = time.monotonic() + 2.0
-    while publisher.get_subscription_count() < 1 and time.monotonic() < deadline:
-        rclpy.spin_once(node, timeout_sec=0.1)
-    if publisher.get_subscription_count() < 1:
-        raise SystemExit("Supervisor operator-event subscriber is unavailable")
-    message = String()
-    message.data = event
-    publisher.publish(message)
-    print(f"event_sent={event}")
 
 deadline = time.monotonic() + 5.0
 while time.monotonic() < deadline:

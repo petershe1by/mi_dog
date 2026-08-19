@@ -133,10 +133,13 @@ def main() -> int:
             assert status == 200 and health["maintenance_controls"] is False
             environment_result = UI.UiServer.run_tool(
                 server,
-                [sys.executable, "-c", "import os; print(os.environ['MI_DOG_MAINTENANCE_CONTROLS'])"],
+                [sys.executable, "-c", "import os; print(os.environ['MI_DOG_MAINTENANCE_CONTROLS']); print(os.environ['MI_DOG_FAST_EVENT'])"],
                 2,
             )
-            assert environment_result["stdout"].strip() == "0"
+            environment_lines = environment_result["stdout"].splitlines()
+            assert environment_lines[0] == "0"
+            assert environment_lines[1] == "1"
+            assert environment_lines[2].startswith("ui_round_trip_ms=")
             timeout_result = UI.UiServer.run_tool(
                 server,
                 [
@@ -215,10 +218,13 @@ def main() -> int:
             assert 'name="mi-dog-maintenance-controls" content="true"' in page
             environment_result = UI.UiServer.run_tool(
                 server,
-                [sys.executable, "-c", "import os; print(os.environ['MI_DOG_MAINTENANCE_CONTROLS'])"],
+                [sys.executable, "-c", "import os; print(os.environ['MI_DOG_MAINTENANCE_CONTROLS']); print(os.environ['MI_DOG_FAST_EVENT'])"],
                 2,
             )
-            assert environment_result["stdout"].strip() == "1"
+            environment_lines = environment_result["stdout"].splitlines()
+            assert environment_lines[0] == "1"
+            assert environment_lines[1] == "1"
+            assert environment_lines[2].startswith("ui_round_trip_ms=")
             status, _ = json_request(
                 base, "/api/posture", token=token, payload={"action": "stand"})
             assert status == 200

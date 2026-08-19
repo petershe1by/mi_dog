@@ -57,6 +57,19 @@ UI 操作、维护姿态按钮和视频都要求电脑能 SSH 到狗；狗内置
 断开网线、Wi-Fi 或关闭 UI 不会把比赛自治进程迁移到电脑。只有查看视频或点击人工操作时才需
 要保持连接。
 
+### 低延时路径与回滚
+
+UI 为同一实例的 SSH 操作复用一条受限 ControlMaster 连接，退出 UI 时主动关闭；远端控制脚本
+只从唯一活动 Supervisor 的 `/proc/<pid>/environ` 继承白名单 ROS 环境。Supervisor 缺失、重复、
+环境不可读或 ROS Domain/RMW 不符时立即拒绝，不回退到旧状态缓存。START/PAUSE/STOP/CONTINUE
+先送达 Supervisor 并确认 `state/stage/run_allowed`，电量和诊断详情由随后状态刷新补齐。
+
+2026-08-19 真机充电闭锁下测得：旧状态链为 6.417–6.799 秒，优化后脚本状态链为
+2.582–3.015 秒；真实快速 PAUSE 往返 1.784 秒，零速度 STOP 往返 2.307 秒。验收后仍为
+`DOWN_WAITING/run_allowed=false`，8 秒真实 Servo 0 帧。优化前可用基线标签为
+`ui-stable-before-latency-20260819`；详细证据见
+[`evidence/2026-08-19_ui_latency_optimization.txt`](evidence/2026-08-19_ui_latency_optimization.txt)。
+
 ## XTerminal 连接
 
 在 XTerminal 新建 SSH 主机：

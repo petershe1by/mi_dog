@@ -43,17 +43,13 @@ fi
 if [[ -n "${MI_DOG_SSH_IDENTITY:-}" ]]; then
   ssh_options+=(-o IdentitiesOnly=yes -i "$MI_DOG_SSH_IDENTITY")
 fi
+if [[ -n "${MI_DOG_SSH_CONTROL_PATH:-}" ]]; then
+  ssh_options+=(-o "ControlPath=$MI_DOG_SSH_CONTROL_PATH" -o ControlMaster=auto -o ControlPersist=30)
+fi
 
 ssh "${ssh_options[@]}" "$target" bash -s -- "$direction" "$vx" "$vy" "$wz" <<'REMOTE_JOG'
 set -eo pipefail
-set +u
-source /opt/ros2/galactic/setup.bash 2>/dev/null
-source /opt/ros2/cyberdog/setup.bash 2>/dev/null
-source /home/mi/mi_dog_ws/install/setup.bash 2>/dev/null
-set -u
-export ROS_DOMAIN_ID=42
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml
+source /home/mi/mi_dog_ws/scripts/load_live_ros_env.sh
 
 direction="$1"
 vx="$2"

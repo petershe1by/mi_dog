@@ -1,0 +1,61 @@
+# 2026-08-19 UI trigger latency optimization
+
+Scope
+- Preserve the already pushed, working UI baseline before optimization.
+- Diagnose UI -> local subprocess -> SSH -> ROS/Supervisor latency.
+- No START, posture, or nonzero movement command was sent.
+- Robot remained wired charging and motion-inhibited for all live tests.
+
+Rollback baseline
+- Git commit: be1c25a (complete field operator manual and working UI)
+- GitHub tag: ui-stable-before-latency-20260819
+- Previous robot rollback archive remains:
+  mi_dog_rollback_0f63d9a_20260819T172716+0800.tar.gz
+- A rollback branch can be created without rewriting history:
+  git switch -c ui-rollback ui-stable-before-latency-20260819
+
+Root-cause timing
+- Fresh SSH handshake: 332, 246, 236 ms.
+- Re-sourcing Galactic + CyberDog + workspace ROS environments: about 4.2 s.
+- Baseline status round trips: 6417, 6707, 6799 ms.
+- Therefore SSH authentication was not the primary delay; repeated ROS environment setup was.
+
+Implementation
+- load_live_ros_env.sh requires exactly one live mi_dog_supervisor_node and imports only an
+  allowlist of ROS environment variables from that process.
+- It refuses missing/duplicate Supervisor, unreadable environment, wrong ROS_DOMAIN_ID, wrong RMW,
+  or an incomplete environment. It never caches run_allowed, BMS, sensor, or motion state.
+- UI operations reuse one OpenSSH ControlMaster socket for 30 seconds; server_close requests a clean
+  master exit. A real temporary UI test confirmed the socket was removed on exit.
+- UI structured events use a fast path: publish first, then wait for authoritative
+  state/stage/run_allowed feedback. Display-only parameters are fetched by the next status refresh.
+- Empty SSH positional arguments are encoded as the explicit NONE sentinel. The new transport test
+  covers PAUSE, status, and stage-4 CONTINUE and prevents the fast flag from shifting into stage.
+- Jog, posture, camera and structured controls all use the same live-environment loader.
+- UI responses append ui_round_trip_ms for field diagnosis.
+
+Observed acceptance
+- Optimized script status: 2585, 2582, 3015 ms (55-62% faster than baseline samples).
+- Real localhost Web UI status: 2530, 2656, 3766 ms.
+- Full diagnostic PAUSE after the environment optimization: 2817 ms.
+- Fast-event PAUSE after sentinel fix: 1784 ms; feedback PAUSED/stage=1/run_allowed=false.
+- Restart path: STOP -> EMERGENCY_STOP -> new Supervisor -> DOWN_WAITING/stage=1/run_allowed=false.
+- Zero-speed jog STOP: 2307 ms; pulse_seconds=0.00 and run_allowed=false.
+- Final read-only audit: service active/enabled, maintenance, single expected nodes,
+  DOWN_WAITING/run_allowed=false, battery 79%, wired charging, motion_switch_status=14,
+  and idle real Servo frames=0 over 8 seconds.
+
+Regression
+- competition_control_transport_offline=PASS
+- competition_ui_offline=PASS
+- competition mode manual controls denied
+- concurrent write HTTP 409
+- STOP bypass, one-time camera token, stderr drain, posture SOC guard, process cleanup and referee
+  event flow all PASS
+- Python compile, all shell syntax and git diff check PASS
+
+Remaining latency
+- Status still needs about 2.5-3.8 seconds because every request creates a short-lived rclpy node and
+  waits for live BMS/motion/DDS data. Reducing it below one second requires a persistent read-only status
+  agent, which should be a separate change with its own stale-data watchdog rather than caching safety
+  values in this patch.

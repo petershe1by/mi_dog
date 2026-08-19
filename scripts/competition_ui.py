@@ -77,6 +77,8 @@ class UiServer(ThreadingHTTPServer):
         self.target = target
         self.identity = identity
         self.maintenance_controls = maintenance_controls
+        self.ssh_control_path = Path(
+            f"/tmp/mi_dog_ui_{os.getuid()}_{os.getpid()}_{self.server_address[1]}.sock")
         self.token = secrets.token_urlsafe(32)
         self.operation_lock = threading.Lock()
         self.camera_session_lock = threading.Lock()
@@ -94,8 +96,11 @@ class UiServer(ThreadingHTTPServer):
         environment["MI_DOG_TARGET"] = self.target
         environment["MI_DOG_SSH_BATCH_MODE"] = "1"
         environment["MI_DOG_SSH_IDENTITY"] = str(self.identity)
+        environment["MI_DOG_SSH_CONTROL_PATH"] = str(self.ssh_control_path)
+        environment["MI_DOG_FAST_EVENT"] = "1"
         environment["MI_DOG_MAINTENANCE_CONTROLS"] = (
             "1" if self.maintenance_controls else "0")
+        started = time.monotonic()
         process = subprocess.Popen(
             command,
             cwd=ROOT,
@@ -130,10 +135,11 @@ class UiServer(ThreadingHTTPServer):
                 "stderr": (stderr or "") + "\ncommand timed out",
                 "values": {},
             }
+        elapsed_ms = round((time.monotonic() - started) * 1000)
         return {
             "ok": process.returncode == 0,
             "returncode": process.returncode,
-            "stdout": stdout,
+            "stdout": (stdout or "") + f"ui_round_trip_ms={elapsed_ms}\n",
             "stderr": stderr,
             "values": parse_key_values(stdout),
         }
@@ -200,14 +206,7 @@ class UiServer(ThreadingHTTPServer):
 
     def camera_process(self) -> subprocess.Popen:
         remote_command = (
-            "set +u; "
-            "source /opt/ros2/galactic/setup.bash >/dev/null 2>&1; "
-            "source /opt/ros2/cyberdog/setup.bash >/dev/null 2>&1; "
-            "source /home/mi/mi_dog_ws/install/setup.bash >/dev/null 2>&1; "
-            "set -u; "
-            "export ROS_DOMAIN_ID=42; "
-            "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp; "
-            "export CYCLONEDDS_URI=file:///etc/mi/cyclonedds.xml; "
+            "source /home/mi/mi_dog_ws/scripts/load_live_ros_env.sh; "
             f"pkill -f '^python3 - --topic {CAMERA_TOPIC} ' >/dev/null 2>&1 || true; "
             f"exec timeout 120s python3 - --topic {CAMERA_TOPIC} --max-fps 5 "
             "--jpeg-quality 68 --max-width 480"
@@ -219,6 +218,9 @@ class UiServer(ThreadingHTTPServer):
             "-o", "ConnectTimeout=5",
             "-o", "ServerAliveInterval=5",
             "-o", "ServerAliveCountMax=2",
+            "-o", f"ControlPath={self.ssh_control_path}",
+            "-o", "ControlMaster=auto",
+            "-o", "ControlPersist=30",
             "-o", "IdentitiesOnly=yes",
             "-i", str(self.identity),
             self.target,
@@ -235,6 +237,18 @@ class UiServer(ThreadingHTTPServer):
             )
         finally:
             script_input.close()
+
+    def server_close(self) -> None:
+        if self.ssh_control_path.exists():
+            try:
+                subprocess.run(
+                    ["ssh", "-o", "BatchMode=yes", "-S", str(self.ssh_control_path),
+                     "-O", "exit", self.target],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, timeout=2, check=False)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        super().server_close()
 
     def camera_begin(self) -> None:
         with self.camera_metrics_lock:

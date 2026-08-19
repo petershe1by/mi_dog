@@ -75,6 +75,7 @@ files=(
   "$source_root/config/course_perception.yaml"
   "$workspace/scripts/run_sensor_gate.sh"
   "$workspace/scripts/start_camera_when_stable.sh"
+  "$workspace/scripts/load_live_ros_env.sh"
   "$workspace/scripts/competition_preflight.sh"
   "$workspace/scripts/capture_deployment_manifest.sh"
   "/etc/systemd/system/mi-dog-real-sensor.service"
