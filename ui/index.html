@@ -15,7 +15,7 @@
       <div>
         <p class="eyebrow">CYBERDOG 2 · LOCAL CONTROL</p>
         <h1>铁蛋比赛控制台</h1>
-        <p class="sub">控制决策在狗内置主控运行；本页只发送白名单操作或短时调试脉冲。</p>
+        <p class="sub">控制决策在狗内置主控运行；比赛前和比赛中的全部人工指令只通过本页发送结构化白名单事件。</p>
       </div>
       <div id="connectionBadge" class="badge offline">未连接</div>
     </header>
@@ -35,7 +35,7 @@
 
     <section class="panel primary-panel">
       <div class="panel-title">
-        <div><p class="kicker">比赛操作</p><h2>开始、暂停与失能</h2></div>
+        <div><p class="kicker">唯一人工入口</p><h2>选手与裁判指令</h2></div>
         <button class="ghost" id="refreshButton">刷新状态</button>
       </div>
       <div class="action-row">
@@ -45,7 +45,7 @@
         <button class="action restart" data-action="restart">重启进程</button>
       </div>
       <div class="stage-row">
-        <label for="stageSelect">从指定赛段继续</label>
+        <label for="stageSelect">跌落放回／裁判指定赛段</label>
         <select id="stageSelect">
           <option value="1">赛段 1 · 石径</option>
           <option value="2">赛段 2 · 橙球阵</option>
@@ -54,8 +54,9 @@
           <option value="5">赛段 5 · 独木桥</option>
           <option value="6">赛段 6 · 足球与终点</option>
         </select>
-        <button class="action continue" id="continueStage">选择并继续</button>
+        <button class="action continue" id="continueStage">确认放回点并 CONTINUE</button>
       </div>
+      <p class="hint">PAUSE 立即撤销运动许可；重启后不会自动继续。跌落放回后按裁判要求选择赛段再 CONTINUE。终点仍必须由四足入圈、停稳和趴下事实完成；裁判要求结束时使用 STOP，不提供“强制完成”接口。</p>
     </section>
 
     <section class="panel video-panel">

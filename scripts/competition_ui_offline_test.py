@@ -125,6 +125,8 @@ def main() -> int:
             assert status == 200
             assert 'name="mi-dog-maintenance-controls" content="false"' in page
             assert 'data-posture="stand"' in page and 'id="cameraStream"' in page
+            assert "唯一人工入口" in page
+            assert "确认放回点并 CONTINUE" in page
             token = server.token
 
             status, health = json_request(base, "/api/health")
@@ -240,6 +242,8 @@ def main() -> int:
     assert stream_token not in logs
     assert "token=<redacted>" in logs
     app_source = (ROOT / "ui" / "app.js").read_text()
+    assert 'confirmations[actionName]' in app_source
+    assert '"continue-stage"' in app_source
     assert "encodeURIComponent(token)" not in app_source
     server_source = (ROOT / "scripts" / "competition_ui.py").read_text()
     assert "pkill -f '^python3 - --topic" in server_source

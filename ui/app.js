@@ -126,6 +126,11 @@
 
   async function action(actionName, stage = null) {
     if (busy && actionName !== "stop") return;
+    const confirmations = {
+      restart: "确认重启比赛进程？重启后保持 DOWN_WAITING，不会自动继续。",
+      "continue-stage": `确认机器狗已按裁判要求放回赛段 ${stage} 的安全位置，并允许继续？`,
+    };
+    if (confirmations[actionName] && !window.confirm(confirmations[actionName])) return;
     setBusy(true);
     stamp(`发送操作：${actionName}${stage ? `，赛段 ${stage}` : ""}`);
     try {
