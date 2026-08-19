@@ -78,9 +78,11 @@ Gazebo 六赛段已经完成，但不能作为下面任何真机项目的替代�
   `run_allowed=true`，日志严格六次会话开始/六次单次 END，最终 STOP 后 6 秒 Servo 0 帧，
   无 BAN_TRANS/3022；用户确认左右转映射正确。该轮未采集逐向里程计/视频位移，不扩大为精确
   停止距离证据。见 `docs/evidence/2026-08-18_six_direction_jog_acceptance.txt`。
-- [ ] 电量至少 50%、拔除充电线并清空周边后，以显式维护模式从 UI 分别验证原厂 `111` 起立和
-  `101` 安全趴下；测试后退出维护实例并确认默认比赛模式重新闭锁；
-  保存服务返回、`motion_status` 进度和现场视频，并确认所有闭锁条件都会禁用或拒绝按钮。
+- [x] 2026-08-19 电量 99%、拔除充电线并清空周边后，通过 UI 同一后端验证原厂 `111` 起立和
+  `101` 安全趴下；测试后保持 maintenance 并确认运动许可重新闭锁；
+  111/101 分别取得 `result=true/code=0`、进度 100%/99% 和完成反馈；最终 maintenance、
+  `DOWN_WAITING/run_allowed=false`、空闲 Servo 0 帧。证据见
+  `docs/evidence/2026-08-19_posture_arm64_acceptance.txt`。
 - [x] 通过 UI 开启头部 RGB SSH-MJPEG 连续运行 2 分钟：709 帧，6.03–6.83 fps，约
   1.26 Mbit/s；断开后远端转码进程立即回收，30 秒重连取得 131 帧且无读取错误；同时记录了
   转码/相机/正式节点 CPU、内存和 Tegra 温度。证据见

@@ -1,0 +1,37 @@
+CyberDog 2 ARM64 deployment and posture acceptance — 2026-08-19 Asia/Shanghai
+
+Source commits
+- c81ed7c Add offline real-course mission framework
+- 285b6a2 Make UI the sole competition operator entry
+
+Preconditions
+- User confirmed at least 1 metre clear space and explicitly approved one stock stand 111
+  followed by one stock safe lie-down 101, with no walking command.
+- maintenance, DOWN_WAITING, run_allowed=false, battery 99%, wired charging false,
+  power normal, motion switch status 0, safe_to_lie_down=true.
+
+ARM64 build and isolated acceptance
+- colcon build --packages-select mi_dog_real: PASS (1 package, 8.16 seconds).
+- Installed controller/mission offline tests: PASS.
+- Isolated course gate: 18 zero command samples, no stage completion, uncalibrated gate reported.
+- Isolated Servo sequence: idle/inhibited emitted no frames; each watchdog/revoke emitted
+  exactly one END; stale reallow emitted no frames.
+- Supervisor power gate, stage-select gate and E-stop guard isolated suites: PASS.
+
+Stock posture actions through the same UI backend
+- Stand: motion_id=111, service_result=true, service_code=0, progress=100,
+  posture_feedback_complete=true.
+- Before lie-down: DOWN_WAITING, run_allowed=false, safety_reason=ready,
+  safe_to_lie_down=true, battery 97%, motion switch status 0.
+- Lie-down: motion_id=101, service_result=true, service_code=0, progress=99,
+  posture_feedback_complete=true.
+
+Final safety evidence
+- maintenance service active, NRestarts=0, three formal nodes single-instance,
+  race controller absent, run_allowed=false, idle Servo frames=0.
+- No walking, START, jog or competition-service switch was performed.
+- Deferred camera helper reported a valid frame and preserved the existing stream after the
+  maintenance restart. A later eight-second read-only audit received zero image frames even
+  though `camera_server` still advertised one publisher; camera continuity therefore remains
+  unresolved and is not accepted by this posture test.
+- No NvCapture, BAN_TRANS or 3022 error was found.

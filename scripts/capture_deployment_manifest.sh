@@ -69,6 +69,8 @@ files=(
   "$source_root/launch/maintenance.launch.py"
   "$source_root/launch/competition.launch.py"
   "$install_root/lib/mi_dog_real/race_controller.py"
+  "$install_root/lib/mi_dog_real/race_mission.py"
+  "$install_root/lib/mi_dog_real/race_replay.py"
   "$workspace/scripts/run_sensor_gate.sh"
   "$workspace/scripts/start_camera_when_stable.sh"
   "$workspace/scripts/competition_preflight.sh"
