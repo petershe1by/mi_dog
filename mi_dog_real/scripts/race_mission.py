@@ -7,7 +7,10 @@ Decision = namedtuple("Decision", "linear yaw complete state intent")
 STAGE_NAMES = ("stone", "balls", "curve", "search", "bridge", "finish")
 REQUIRED = {
   1: ("stones_passed:4", "exit_crossed"),
-  2: ("orange_touched:4", "exit_crossed"),
+  # Stage 2 is now a transit stage: cross the ball field directly.  Orange
+  # detections are announced by the ROS wrapper but do not own routing or
+  # completion and do not make the dog search every grid cell.
+  2: ("exit_crossed",),
   3: ("lane_valid", "exit_crossed"),
   4: ("coke_down", "stage4_orange_touched", "football_scored", "lowbars_passed:2",
       "obstacle_bypassed", "bridge_contact"),
@@ -35,9 +38,24 @@ class CourseTransform:
         return self.ox + c*x-s*y, self.oy+s*x+c*y
 
 class MissionCore:
-    def __init__(self, course_calibrated=False, timeout=0.6, min_localization=0.65):
+    def __init__(self, course_calibrated=False, timeout=0.6, min_localization=0.65,
+                 stage_speeds=(.08,.06,.07,.05,.04,.06),
+                 stage_1_across_target=(3.70, 0.50),
+                 stage_1_exit_target=(3.70, 1.30),
+                 stage_2_exit_target=(0.30, 5.30)):
+        if (len(stage_speeds) != 6 or
+                not all(finite(value) and value > 0.0 for value in stage_speeds)):
+            raise ValueError("exactly six positive stage speeds are required")
         self.course_calibrated=bool(course_calibrated); self.timeout=float(timeout)
-        self.min_localization=float(min_localization); self.stage=1; self.completed=set()
+        self.min_localization=float(min_localization)
+        self.stage_speeds=tuple(float(value) for value in stage_speeds)
+        targets = (stage_1_across_target, stage_1_exit_target, stage_2_exit_target)
+        if any(len(target) != 2 or not all(finite(v) for v in target) for target in targets):
+            raise ValueError("invalid map route target")
+        self.stage_1_across_target = tuple(map(float, stage_1_across_target))
+        self.stage_1_exit_target = tuple(map(float, stage_1_exit_target))
+        self.stage_2_exit_target = tuple(map(float, stage_2_exit_target))
+        self.stage=1; self.completed=set()
         self.checkpoint={"stage":1,"facts":{},"updated":0.0}
     def select_stage(self, stage):
         if stage not in range(1,7): raise ValueError("stage must be 1..6")
@@ -75,12 +93,34 @@ class MissionCore:
             first=self.stage not in self.completed; self.completed.add(self.stage)
             return Decision(0.,0.,first,"STAGE_COMPLETE","STOP")
         front=observation.get("front_clearance_m")
-        if not finite(front) or front <= 0.35: return Decision(0.,0.,False,"BLOCKED","AVOID")
+        # Balls are intentionally contacted in stage 2.  The downstream
+        # adapter retains a stage-specific 0.18 m hard stop and the global
+        # boundary/tilt/watchdog gates; do not apply the ordinary 0.35 m
+        # high-level obstacle stop to the dense ball field.
+        clearance_limit = 0.12 if self.stage == 2 else 0.35
+        if not finite(front) or front <= clearance_limit:
+            return Decision(0.,0.,False,"BLOCKED","AVOID")
         heading=observation.get("heading_error_rad",0.)
         if not finite(heading): return Decision(0.,0.,False,"PERCEPTION_INVALID","STOP")
-        intent=("FOLLOW_STONES","SEARCH_ORANGE","FOLLOW_LANE","SEARCH_OBJECTS",
+        if self.stage in (1, 2):
+            pose = observation.get("course_pose")
+            if (not isinstance(pose, (list, tuple)) or len(pose) != 3 or
+                    not all(finite(value) for value in pose)):
+                return Decision(0.,0.,False,"LOCALIZATION_UNCERTAIN","STOP")
+            if self.stage == 1:
+                target = (self.stage_1_exit_target if int(facts.get("stones_passed", 0)) >= 4
+                          else self.stage_1_across_target)
+            else:
+                target = self.stage_2_exit_target
+            dx, dy = target[0] - pose[0], target[1] - pose[1]
+            target_heading = math.atan2(dy, dx)
+            heading = math.atan2(math.sin(target_heading - pose[2]),
+                                 math.cos(target_heading - pose[2]))
+        intent=("FOLLOW_STONES","TRANSIT_BALL_FIELD","FOLLOW_LANE","SEARCH_OBJECTS",
                 "CROSS_BRIDGE","FINISH_TASKS")[self.stage-1]
-        speed=(.08,.06,.07,.05,.04,.06)[self.stage-1]
+        speed=self.stage_speeds[self.stage-1]
+        if self.stage in (1, 2) and abs(heading) > 0.45:
+            speed = 0.0
         return Decision(speed,max(-.20,min(.20,heading*.7)),False,"RUNNING",intent)
     def snapshot(self): return json.dumps(self.checkpoint,sort_keys=True,separators=(",",":"))
 

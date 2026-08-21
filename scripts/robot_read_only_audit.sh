@@ -79,6 +79,14 @@ case "$exec_start" in
   *"run_sensor_gate.sh sensor-only"*) mode=sensor-only ;;
   *) mode=unknown; fail "unrecognized service ExecStart: $exec_start" ;;
 esac
+mode_file="$workspace/state/launch_mode"
+if [[ -r "$mode_file" ]]; then
+  IFS= read -r effective_mode < "$mode_file"
+  case "$effective_mode" in
+    maintenance|competition|sensor-only) mode="$effective_mode" ;;
+    *) fail "invalid launch-mode marker: $effective_mode" ;;
+  esac
+fi
 printf '[INFO] service_mode=%s\n' "$mode"
 
 source /opt/ros2/galactic/setup.bash

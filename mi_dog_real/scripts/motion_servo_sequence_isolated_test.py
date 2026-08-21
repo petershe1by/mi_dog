@@ -11,7 +11,7 @@ from geometry_msgs.msg import Twist
 from protocol.msg import MotionServoCmd
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Int32
 
 
 PREFIX = "/mi_dog_test/servo_sequence"
@@ -29,6 +29,7 @@ def real_node_command():
         "motion_topic": f"{PREFIX}/motion_servo_cmd",
         "command_topic": f"{PREFIX}/safe_cmd_vel",
         "supervisor_run_allowed_topic": f"{PREFIX}/run_allowed",
+        "current_stage_topic": f"{PREFIX}/current_stage",
         "camera_topic": f"{PREFIX}/no_image",
         "lidar_topic": f"{PREFIX}/no_scan",
         "pose_topic": f"{PREFIX}/no_pose",
@@ -78,6 +79,8 @@ class Probe(Node):
             Twist, f"{PREFIX}/safe_cmd_vel", 10)
         self.allowed_pub = self.create_publisher(
             Bool, f"{PREFIX}/run_allowed", latched)
+        self.stage_pub = self.create_publisher(
+            Int32, f"{PREFIX}/current_stage", latched)
         self.motion_sub = self.create_subscription(
             MotionServoCmd,
             f"{PREFIX}/motion_servo_cmd",
@@ -91,10 +94,12 @@ class Probe(Node):
             rclpy.spin_once(self, timeout_sec=0.1)
             if (self.command_pub.get_subscription_count() == 1 and
                     self.allowed_pub.get_subscription_count() == 1):
+                if self.stage_pub.get_subscription_count() != 1:
+                    continue
                 return True
         return False
 
-    def sample(self, seconds, *, allowed=None, command=None):
+    def sample(self, seconds, *, allowed=None, command=None, stage=None):
         start_index = len(self.samples)
         deadline = time.monotonic() + seconds
         while time.monotonic() < deadline:
@@ -106,6 +111,10 @@ class Probe(Node):
                 message = Twist()
                 message.linear.x, message.linear.y, message.angular.z = command
                 self.command_pub.publish(message)
+            if stage is not None:
+                stage_message = Int32()
+                stage_message.data = stage
+                self.stage_pub.publish(stage_message)
             rclpy.spin_once(self, timeout_sec=0.02)
             time.sleep(0.02)
         return [message for _, message in self.samples[start_index:]]
@@ -158,9 +167,11 @@ def main():
 
         initial = probe.sample(0.5, allowed=False)
         idle_request = probe.sample(0.5, allowed=True, command=(0.0, 0.0, 0.0))
-        first_session = probe.sample(0.9, allowed=True, command=(0.05, 0.0, 0.0))
+        first_session = probe.sample(
+            0.9, allowed=True, command=(0.05, 0.0, 0.0), stage=1)
         timeout_phase = probe.sample(0.8, allowed=True)
-        second_session = probe.sample(0.8, allowed=True, command=(0.05, 0.0, 0.0))
+        second_session = probe.sample(
+            0.8, allowed=True, command=(0.05, 0.0, 0.0), stage=2)
         revoke_phase = probe.sample(0.6, allowed=False)
         stale_after_reallow = probe.sample(0.4, allowed=True)
         third_session = probe.sample(0.8, allowed=True, command=(0.05, 0.0, 0.0))
@@ -178,14 +189,22 @@ def main():
         results["moving_data_has_positive_velocity"] = bool(data_frames) and any(
             any(abs(value) > 1e-9 for value in message.vel_des)
             for message in data_frames)
-        results["moving_data_has_configured_step_height"] = bool(data_frames) and all(
+        results["stage_1_moving_data_has_high_step_height"] = bool(data_frames) and all(
             len(message.step_height) == 2 and
-            all(abs(value - 0.05) <= 1e-6 for value in message.step_height)
+            all(abs(value - 0.15) <= 1e-6 for value in message.step_height)
             for message in data_frames)
         results["command_timeout_sends_exactly_one_end"] = (
             types(timeout_phase).count(MotionServoCmd.SERVO_END) == 1)
         results["second_session_restarts_start_then_data"] = ordered_start_data(
             second_session)
+        second_data_frames = [
+            message for message in second_session
+            if message.cmd_type == MotionServoCmd.SERVO_DATA]
+        results["stage_2_moving_data_keeps_normal_step_height"] = (
+            bool(second_data_frames) and all(
+                len(message.step_height) == 2 and
+                all(abs(value - 0.05) <= 1e-6 for value in message.step_height)
+                for message in second_data_frames))
         results["permission_revoke_sends_exactly_one_end"] = (
             types(revoke_phase).count(MotionServoCmd.SERVO_END) == 1)
         results["reallow_without_fresh_command_emits_no_servo_frames"] = (

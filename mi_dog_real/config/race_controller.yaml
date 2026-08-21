@@ -1,9 +1,12 @@
 /**:
   ros__parameters:
-    # Official drawing geometry is loaded below, but randomized object poses,
-    # the start transform and physical stage results still require site work.
-    # Keep this false until every stage and one full run have passed.
+    # Fail closed in source control. Enable only after a fresh post-boot start
+    # transform and the authorized physical stage acceptance have passed.
     course_calibrated: false
+    # Only stages 1 and 2 are authorized for this acceptance run. After stage
+    # 2 completion the supervisor may advance to 3, but the controller emits
+    # zero velocity with STAGE_NOT_ACCEPTED.
+    max_enabled_stage: 2
     geometry_source: "official_2026_problem_pdf_page_3"
     camera_topic: "/mi_desktop_48_b0_2d_7a_fe_40/image"
     lidar_topic: "/mi_desktop_48_b0_2d_7a_fe_40/scan"
@@ -15,6 +18,8 @@
     current_stage_topic: "/mi_dog_real/supervisor/current_stage"
     perception_topic: "/mi_dog_real/course_observation"
     sensor_timeout_sec: 0.6
+    # Operator-authorized lidar + odometry degraded mode for stages 1-2.
+    require_camera_ready: false
     perception_timeout_sec: 0.6
     min_localization_confidence: 0.65
     # Global drawing frame: x left-to-right, y start-to-finish, origin at the
@@ -41,13 +46,42 @@
     geometry.ball_row_spacing_m: 0.64
     geometry.ball_diameter_m: 0.20
     geometry.stage_2_ball_bottom_height_m: 0.20
+    # Official page-3 openings and route centres. Start arrow points +x;
+    # stage 1 turns through the right opening, stage 2 exits at top-left.
+    geometry.stage_1_start_center_x_m: 0.50
+    geometry.stage_1_start_center_y_m: 0.50
+    geometry.stage_1_exit_opening_width_m: 0.60
+    geometry.stage_1_exit_center_x_m: 3.70
+    geometry.stage_1_exit_center_y_m: 1.00
+    geometry.stage_1_exit_clear_y_m: 1.30
+    geometry.stage_2_exit_opening_width_m: 0.60
+    geometry.stage_2_exit_center_x_m: 0.30
+    geometry.stage_2_exit_center_y_m: 5.00
+    geometry.stage_2_exit_clear_y_m: 5.30
     geometry.curve_lane_width_m: 0.60
     geometry.curve_longitudinal_span_m: 2.0
+    # Stage 3 is an S curve. Only its dimensioned entry/exit anchors are
+    # fixed; intermediate steering must follow the two visible boundaries.
+    geometry.stage_3_entry_center_x_m: 0.30
+    geometry.stage_3_entry_center_y_m: 5.00
+    geometry.stage_3_entry_clear_y_m: 5.30
+    geometry.stage_3_exit_center_x_m: 3.70
+    geometry.stage_3_exit_center_y_m: 7.00
+    geometry.stage_3_exit_clear_y_m: 7.30
     geometry.search_area_width_m: 4.0
     geometry.search_area_length_m: 4.0
+    geometry.searchable_channel_width_m: 3.0
     geometry.search_channel_count: 3
     geometry.search_channel_width_m: 1.0
     geometry.search_channel_length_m: 2.5
+    geometry.stage_4_entry_center_x_m: 3.70
+    geometry.stage_4_entry_center_y_m: 7.30
+    geometry.stage_4_lane_1_center_x_m: 0.50
+    geometry.stage_4_lane_2_center_x_m: 1.50
+    geometry.stage_4_lane_3_center_x_m: 2.50
+    geometry.stage_4_cross_channel_start_y_m: 7.00
+    geometry.stage_4_channel_partition_y_m: 8.50
+    geometry.stage_4_channel_end_y_m: 11.00
     geometry.obstacle_random_span_m: 1.5
     geometry.stage_4_ball_bottom_height_m: 0.60
     geometry.low_bar_length_m: 1.10
@@ -58,14 +92,49 @@
     geometry.goal_width_m: 0.50
     geometry.goal_height_m: 0.30
     geometry.goal_depth_m: 0.50
-    geometry.bridge_width_m: 0.60
+    geometry.bridge_width_m: 0.50
     geometry.bridge_height_m: 0.05
     geometry.bridge_jump_before_end_m: 0.50
+    geometry.stage_5_bridge_center_x_m: 3.75
+    geometry.stage_5_bridge_start_y_m: 7.00
+    geometry.stage_5_bridge_jump_line_y_m: 11.50
+    geometry.stage_5_bridge_end_y_m: 12.00
+    geometry.stage_6_area_start_y_m: 12.00
+    geometry.stage_6_track_width_m: 0.50
+    geometry.stage_6_bottom_center_y_m: 12.25
+    geometry.stage_6_left_center_x_m: 0.25
+    geometry.stage_6_top_center_y_m: 15.75
+    geometry.stage_6_right_center_x_m: 3.75
+    geometry.stage_6_track_exit_y_m: 13.50
+    geometry.stage_6_football_x_m: 1.00
+    geometry.stage_6_football_y_m: 15.00
+    geometry.stage_6_finish_center_x_m: 3.75
+    geometry.stage_6_finish_center_y_m: 13.25
+    # Runtime outer-course guard. This is independent of the official painted
+    # boundary width above: 8 cm is the final non-intrusion margin, while the
+    # controller starts correcting earlier and predicts limited-deceleration stop.
+    boundary_guard.keepout_m: 0.08
+    boundary_guard.reaction_sec: 0.20
+    boundary_guard.decel_mps2: 0.40
+    boundary_guard.correction_start_m: 0.30
+    boundary_guard.correction_gain: 0.65
+    boundary_guard.max_correction_yaw_rps: 0.20
     # Conservative defaults. Measure and update distances during course walk-through.
-    stage_1.distance_m: 2.0
-    stage_1.speed_mps: 0.10
-    stage_2.distance_m: 2.0
+    # Start centre x=0.50 to right opening centre x=3.70.
+    stage_1.distance_m: 3.20
+    stage_1.speed_mps: 0.40
+    stage_1.heading_gain: 1.2
+    stage_1.cross_track_gain: 1.5
+    stage_1.max_correction_yaw_rps: 0.25
+    stage_1.slow_lateral_error_m: 0.08
+    stage_1.stop_lateral_error_m: 0.18
+    # Diagonal between the right-bottom and left-top 0.60 m opening centres.
+    stage_2.distance_m: 5.25
     stage_2.speed_mps: 0.08
+    stage_2.orange_confirm_frames: 3
+    stage_2.orange_clear_frames: 8
+    stage_2.orange_audio_cooldown_sec: 3.0
+    stage_2.orange_audio_file: "/home/mi/mi_dog_ws/install/mi_dog_real/share/mi_dog_real/audio/orange_ball.wav"
     stage_3.distance_m: 2.5
     stage_3.speed_mps: 0.09
     stage_4.distance_m: 2.0

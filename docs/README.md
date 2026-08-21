@@ -10,11 +10,13 @@
 5. [比赛控制 UI](COMPETITION_UI.md)：默认比赛模式、一键操作、维护控制安全门和 XTerminal/SSH。
 6. [组委会确认单](ORGANIZER_CONFIRMATION.md)：电脑操作、端口、离线架构及待确认恢复细节的记录。
 7. [比赛日流程](COMPETITION_DAY_CHECKLIST.md)：规则操作边界、一键启动结论和待填官方日程。
-8. [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)：需要补测、尚未实现和现场确认的可勾选任务。
-9. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
-10. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
-11. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
-12. [路线图](ROADMAP.md)：下一步、完成条件和安全顺序。
+8. [工作站迁移指南](WORKSTATION_MIGRATION.md)：把当前源码、Docker 仿真环境和机器人 SSH
+   控制入口迁移到另一台 Windows/WSL2 调试电脑。
+9. [待完成真机测试清单](PENDING_REAL_ROBOT_TESTS.md)：需要补测、尚未实现和现场确认的可勾选任务。
+10. [真机测试数据](REAL_ROBOT_TEST_DATA.md)：全部保留下来的测量值、测试条件和证据等级。
+11. [真机验收矩阵](REAL_ROBOT_ACCEPTANCE.md)：已经通过、部分通过和禁止执行的测试门。
+12. [工作记录](WORKLOG.md)：从仿真到真机的时间线、关键决策和 Git 提交。
+13. [路线图](ROADMAP.md)：下一步、完成条件和安全顺序。
 
 现有专题文档：
 

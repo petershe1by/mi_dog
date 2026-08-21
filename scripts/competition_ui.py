@@ -73,6 +73,7 @@ class UiServer(ThreadingHTTPServer):
     def __init__(
             self, address, handler, *, target: str, identity: Path,
             maintenance_controls: bool = False):
+        self.ssh_control_path: Path | None = None
         super().__init__(address, handler)
         self.target = target
         self.identity = identity
@@ -239,7 +240,7 @@ class UiServer(ThreadingHTTPServer):
             script_input.close()
 
     def server_close(self) -> None:
-        if self.ssh_control_path.exists():
+        if self.ssh_control_path is not None and self.ssh_control_path.exists():
             try:
                 subprocess.run(
                     ["ssh", "-o", "BatchMode=yes", "-S", str(self.ssh_control_path),

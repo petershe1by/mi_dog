@@ -7,9 +7,16 @@
     observation_topic: "/mi_dog_real/course_observation"
     status_topic: "/mi_dog_real/course_perception/status"
     sensor_timeout_sec: 0.6
+    # Stage 1-2 degraded mode: localize and navigate from lidar + odometry.
+    require_camera_ready: false
     sample_stride: 6
     min_colour_pixels: 8
     max_odom_jump_m: 0.40
+    stage_2_exit_distance_m: 5.25
+    # Fail closed in source control. Odom resets across robot reboots, so a
+    # captured transform is runtime evidence and must never become a portable
+    # repository default. Fill all three values from a fresh start capture,
+    # validate the placement, then explicitly set this flag true on site.
     site_transform_valid: false
     site_origin_x_m: 0.0
     site_origin_y_m: 0.0

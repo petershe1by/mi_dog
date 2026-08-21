@@ -22,6 +22,7 @@
 #include "sensor_msgs/msg/range.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
+#include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
@@ -96,6 +97,8 @@ class MiDogRealNode final : public rclcpp::Node {
         declare_parameter<std::string>("operator_event_topic", "/mi_dog_real/operator_event");
     const auto supervisor_run_allowed_topic = declare_parameter<std::string>(
         "supervisor_run_allowed_topic", "/mi_dog_real/supervisor/run_allowed");
+    const auto current_stage_topic = declare_parameter<std::string>(
+        "current_stage_topic", "/mi_dog_real/supervisor/current_stage");
     const auto audio_feedback_service =
         declare_parameter<std::string>("audio_feedback_service", "/speech_text_play");
     const auto wake_event_topic =
@@ -127,8 +130,13 @@ class MiDogRealNode final : public rclcpp::Node {
     max_lateral_accel_mps2_ = declare_parameter<double>("max_lateral_accel_mps2", 0.30);
     max_yaw_accel_rps2_ = declare_parameter<double>("max_yaw_accel_rps2", 0.80);
     step_height_m_ = declare_parameter<double>("step_height_m", 0.05);
+    stage_1_step_height_m_ = declare_parameter<double>("stage_1_step_height_m", 0.15);
     front_stop_distance_m_ = declare_parameter<double>("front_stop_distance_m", 0.35);
     front_slow_distance_m_ = declare_parameter<double>("front_slow_distance_m", 0.70);
+    stage_2_front_stop_distance_m_ =
+        declare_parameter<double>("stage_2_front_stop_distance_m", 0.18);
+    stage_2_front_slow_distance_m_ =
+        declare_parameter<double>("stage_2_front_slow_distance_m", 0.40);
     front_half_angle_rad_ = declare_parameter<double>("front_half_angle_rad", 0.45);
     front_lidar_self_echo_max_m_ =
         declare_parameter<double>("front_lidar_self_echo_max_m", 0.32);
@@ -148,7 +156,12 @@ class MiDogRealNode final : public rclcpp::Node {
         max_forward_mps_ <= 0.0 || max_lateral_mps_ <= 0.0 || max_yaw_rps_ <= 0.0 ||
         max_forward_accel_mps2_ <= 0.0 || max_lateral_accel_mps2_ <= 0.0 ||
         max_yaw_accel_rps2_ <= 0.0 || step_height_m_ <= 0.0 ||
+        stage_1_step_height_m_ <= 0.0 || stage_1_step_height_m_ > 0.15 ||
         front_stop_distance_m_ <= 0.0 || front_slow_distance_m_ <= front_stop_distance_m_ ||
+        stage_2_front_stop_distance_m_ <= 0.0 ||
+        stage_2_front_slow_distance_m_ <= stage_2_front_stop_distance_m_ ||
+        stage_2_front_stop_distance_m_ > front_stop_distance_m_ ||
+        stage_2_front_slow_distance_m_ > front_slow_distance_m_ ||
         front_half_angle_rad_ <= 0.0 || front_lidar_self_echo_max_m_ <= 0.0 ||
         front_lidar_self_echo_max_m_ >= front_stop_distance_m_ ||
         front_lidar_cluster_range_jump_m_ <= 0.0 ||
@@ -169,6 +182,11 @@ class MiDogRealNode final : public rclcpp::Node {
             front_ultrasonic_extreme_stop_m_});
     front_clearance_pub_ = create_publisher<std_msgs::msg::Float64MultiArray>(
         front_clearance_summary_topic, rclcpp::SensorDataQoS());
+    current_stage_sub_ = create_subscription<std_msgs::msg::Int32>(
+        current_stage_topic, rclcpp::QoS(1).reliable().transient_local(),
+        [this](std_msgs::msg::Int32::ConstSharedPtr stage) {
+          current_stage_ = stage->data >= 1 && stage->data <= 6 ? stage->data : 0;
+        });
 
     armed_ = enable_motion_ && arm_token == kArmToken;
     voice_enabled_ = !require_voice_start_;
@@ -441,13 +459,17 @@ class MiDogRealNode final : public rclcpp::Node {
     double lateral = 0.0;
     double yaw = 0.0;
     if (command_type == kServoCommand) {
+      const double active_front_stop_distance = current_stage_ == 2 ?
+          stage_2_front_stop_distance_m_ : front_stop_distance_m_;
+      const double active_front_slow_distance = current_stage_ == 2 ?
+          stage_2_front_slow_distance_m_ : front_slow_distance_m_;
       forward = std::clamp(command_.linear.x, -max_forward_mps_, max_forward_mps_);
       lateral = std::clamp(command_.linear.y, -max_lateral_mps_, max_lateral_mps_);
       yaw = std::clamp(command_.angular.z, -max_yaw_rps_, max_yaw_rps_);
-      if (forward > 0.0 && front_clearance_m_ < front_slow_distance_m_) {
+      if (forward > 0.0 && front_clearance_m_ < active_front_slow_distance) {
         const double scale = std::clamp(
-            (front_clearance_m_ - front_stop_distance_m_) /
-                (front_slow_distance_m_ - front_stop_distance_m_),
+            (front_clearance_m_ - active_front_stop_distance) /
+                (active_front_slow_distance - active_front_stop_distance),
             0.0, 1.0);
         forward *= scale;
       }
@@ -468,8 +490,12 @@ class MiDogRealNode final : public rclcpp::Node {
     // the real robot otherwise steps in place and can drift while "stopped".
     const bool translating_or_turning = command_type == kServoCommand &&
         (std::abs(forward) > 1e-9 || std::abs(lateral) > 1e-9 || std::abs(yaw) > 1e-9);
+    // Stage 1 uses the explicitly configured high-step profile. Missing or
+    // invalid stage state fails back to the normal, lower step height.
+    const double active_step_height =
+        current_stage_ == 1 ? stage_1_step_height_m_ : step_height_m_;
     const float commanded_step_height = translating_or_turning ?
-        static_cast<float>(step_height_m_) : 0.0F;
+        static_cast<float>(active_step_height) : 0.0F;
     message.step_height = {commanded_step_height, commanded_step_height};
     return message;
   }
@@ -553,11 +579,13 @@ class MiDogRealNode final : public rclcpp::Node {
       publish_stop();
       return;
     }
-    if (command_.linear.x > 0.0 && front_clearance_m_ <= front_stop_distance_m_) {
+    const double active_front_stop_distance = current_stage_ == 2 ?
+        stage_2_front_stop_distance_m_ : front_stop_distance_m_;
+    if (command_.linear.x > 0.0 && front_clearance_m_ <= active_front_stop_distance) {
       publish_stop();
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000,
                            "Forward motion inhibited: clearance %.3f m <= %.3f m.",
-                           front_clearance_m_, front_stop_distance_m_);
+                           front_clearance_m_, active_front_stop_distance);
       return;
     }
     const bool command_requests_motion =
@@ -623,8 +651,12 @@ class MiDogRealNode final : public rclcpp::Node {
   double max_lateral_accel_mps2_{0.30};
   double max_yaw_accel_rps2_{0.80};
   double step_height_m_{0.05};
+  double stage_1_step_height_m_{0.15};
+  int32_t current_stage_{0};
   double front_stop_distance_m_{0.35};
   double front_slow_distance_m_{0.70};
+  double stage_2_front_stop_distance_m_{0.18};
+  double stage_2_front_slow_distance_m_{0.40};
   double front_half_angle_rad_{0.45};
   double front_lidar_self_echo_max_m_{0.32};
   double front_lidar_cluster_range_jump_m_{0.12};
@@ -665,6 +697,7 @@ class MiDogRealNode final : public rclcpp::Node {
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr command_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr voice_command_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr supervisor_run_allowed_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr current_stage_sub_;
   rclcpp::Subscription<protocol::msg::TouchStatus>::SharedPtr touch_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr wake_event_sub_;
   rclcpp::Publisher<protocol::msg::MotionServoCmd>::SharedPtr motion_pub_;

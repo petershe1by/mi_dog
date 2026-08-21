@@ -22,6 +22,7 @@ PREFIX = "/mi_dog_test/race_course_gate"
 def controller_command():
     parameters = {
         "course_calibrated": "false",
+        "max_enabled_stage": "6",
         "sensor_timeout_sec": "0.6",
         "camera_topic": f"{PREFIX}/image",
         "lidar_topic": f"{PREFIX}/scan",

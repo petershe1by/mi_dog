@@ -55,5 +55,7 @@ install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY include/
   DESTINATION include)
+install(FILES ../audio/orange_ball.wav
+  DESTINATION share/${PROJECT_NAME}/audio)
 
 ament_package()

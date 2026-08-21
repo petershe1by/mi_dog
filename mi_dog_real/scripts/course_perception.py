@@ -58,6 +58,37 @@ class SiteLocalization(object):
         return (course_x, course_y, heading), 0.85, "LOCALIZED_ODOM"
 
 
+class Stage2TransitTracker(object):
+    """Measure direct displacement from the stage-2 entry pose."""
+    def __init__(self, exit_distance_m=5.25):
+        if not _finite(exit_distance_m) or exit_distance_m <= 0.0:
+            raise ValueError("invalid stage-2 transit tracker")
+        self.exit_distance_m = float(exit_distance_m)
+        self.origin = None
+        self.progress_m = 0.0
+        self.exit_crossed = False
+
+    def reset(self):
+        self.origin = None
+        self.progress_m = 0.0
+        self.exit_crossed = False
+
+    def update(self, stage, x, y, yaw):
+        if stage != 2:
+            self.reset()
+            return 0.0, False
+        if not all(_finite(value) for value in (x, y, yaw)):
+            return self.progress_m, self.exit_crossed
+        if self.origin is None:
+            self.origin = (float(x), float(y), float(yaw))
+        x0, y0, _yaw0 = self.origin
+        displacement = math.hypot(x - x0, y - y0)
+        self.progress_m = max(self.progress_m, displacement)
+        if self.progress_m >= self.exit_distance_m:
+            self.exit_crossed = True
+        return self.progress_m, self.exit_crossed
+
+
 def extract_colour_features(data, width, height, encoding, step,
                             sample_stride=6, min_colour_pixels=8):
     if encoding not in ("bgr8", "rgb8"):
@@ -133,6 +164,8 @@ def main():
             output_topic = self.declare_parameter("observation_topic", "/mi_dog_real/course_observation").value
             status_topic = self.declare_parameter("status_topic", "/mi_dog_real/course_perception/status").value
             self.timeout = float(self.declare_parameter("sensor_timeout_sec", 0.6).value)
+            self.require_camera_ready = bool(
+                self.declare_parameter("require_camera_ready", True).value)
             self.sample_stride = int(self.declare_parameter("sample_stride", 6).value)
             self.min_colour_pixels = int(self.declare_parameter("min_colour_pixels", 8).value)
             self.localization = SiteLocalization(
@@ -141,11 +174,14 @@ def main():
                 float(self.declare_parameter("site_origin_yaw_rad", 0.0).value),
                 bool(self.declare_parameter("site_transform_valid", False).value),
                 float(self.declare_parameter("max_odom_jump_m", 0.40).value))
+            self.stage_2_tracker = Stage2TransitTracker(
+                float(self.declare_parameter("stage_2_exit_distance_m", 5.25).value))
             latched = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
                                  durability=DurabilityPolicy.TRANSIENT_LOCAL)
             self.publisher = self.create_publisher(String, output_topic, 10)
             self.status_publisher = self.create_publisher(String, status_topic, latched)
             self.stage, self.image, self.clearance, self.pose = 1, None, None, None
+            self.stage_1_stones_latched = False
             self.localization_confidence = 0.0
             self.localization_state = "ODOM_MISSING"
             self.seen = {"image": 0.0, "scan": 0.0, "odom": 0.0}
@@ -159,7 +195,11 @@ def main():
         def now_s(): return time.monotonic()
 
         def on_stage(self, message):
-            if message.data in range(1, 7): self.stage = message.data
+            if message.data in range(1, 7):
+                if message.data != self.stage:
+                    self.stage_2_tracker.reset()
+                    self.stage_1_stones_latched = False
+                self.stage = message.data
 
         def on_image(self, message):
             try:
@@ -183,6 +223,9 @@ def main():
                                           orientation.z, orientation.w)
                 self.pose, self.localization_confidence, self.localization_state = self.localization.update(
                     message.pose.pose.position.x, message.pose.pose.position.y, yaw)
+                self.stage_2_tracker.update(
+                    self.stage, message.pose.pose.position.x,
+                    message.pose.pose.position.y, yaw)
                 self.seen["odom"] = self.now_s()
             except ValueError:
                 self.pose, self.localization_confidence = None, 0.0
@@ -193,7 +236,23 @@ def main():
             fresh = {name: stamp > 0.0 and now - stamp <= self.timeout
                      for name, stamp in self.seen.items()}
             image = self.image if fresh["image"] and self.image is not None else {}
-            confidence = self.localization_confidence if all(fresh.values()) else 0.0
+            localization_inputs_fresh = fresh["scan"] and fresh["odom"] and (
+                fresh["image"] or not self.require_camera_ready)
+            confidence = self.localization_confidence if localization_inputs_fresh else 0.0
+            facts = {}
+            if self.stage == 1 and self.pose is not None:
+                # Official map: start arrow is +x. Reaching the right-side
+                # 0.60 m opening necessarily crosses all four transverse slabs.
+                if self.pose[0] >= 3.40 and 0.0 <= self.pose[1] <= 1.05:
+                    self.stage_1_stones_latched = True
+                facts["stones_passed"] = 4 if self.stage_1_stones_latched else 0
+                facts["exit_crossed"] = bool(
+                    self.stage_1_stones_latched and self.pose[0] >= 3.40 and
+                    self.pose[1] >= 1.30)
+            if self.stage == 2:
+                facts["exit_crossed"] = bool(
+                    self.pose is not None and 0.0 <= self.pose[0] <= 0.60 and
+                    self.pose[1] >= 5.00)
             observation = {
                 "schema": "mi_dog_course_observation_v1", "monotonic_stamp": now,
                 "stage": self.stage, "localization_confidence": confidence,
@@ -202,7 +261,8 @@ def main():
                 "course_pose": self.pose,
                 "front_clearance_m": self.clearance if fresh["scan"] else 0.0,
                 "heading_error_rad": image.get("heading_error_rad", 0.0),
-                "detections": image, "facts": {}, "sensors_fresh": fresh,
+                "detections": image, "facts": facts, "sensors_fresh": fresh,
+                "stage_2_progress_m": round(self.stage_2_tracker.progress_m, 4),
             }
             message = String()
             message.data = json.dumps(observation, sort_keys=True, separators=(",", ":"), allow_nan=False)

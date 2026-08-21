@@ -2,6 +2,10 @@
 set -euo pipefail
 
 launch_mode="${1:-sensor-only}"
+mode_file=/home/mi/mi_dog_ws/state/launch_mode
+if [[ -r "$mode_file" ]]; then
+  IFS= read -r launch_mode < "$mode_file"
+fi
 if [[ "$launch_mode" != "sensor-only" && "$launch_mode" != "competition" && "$launch_mode" != "maintenance" ]]; then
   echo "usage: run_sensor_gate.sh [sensor-only|competition|maintenance]" >&2
   exit 2

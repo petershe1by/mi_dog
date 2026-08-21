@@ -14,7 +14,8 @@ PREFIX = "/mi_dog_test/race_sensor_stale"
 
 def command():
     parameters = {
-        "course_calibrated": "true", "sensor_timeout_sec": "0.4",
+        "course_calibrated": "true", "max_enabled_stage": "6",
+        "sensor_timeout_sec": "0.4",
         "camera_topic": PREFIX + "/image", "lidar_topic": PREFIX + "/scan",
         "odometry_topic": PREFIX + "/odom", "command_topic": PREFIX + "/cmd",
         "stage_complete_topic": PREFIX + "/complete", "status_topic": PREFIX + "/status",
@@ -43,7 +44,7 @@ class Probe(Node):
         self.create_subscription(String, PREFIX + "/status",
                                  lambda m: self.statuses.append(json.loads(m.data)), latched)
 
-    def publish(self, include_image):
+    def publish(self, include_image, odom_y=0.0, course_pose=(2.0, 2.0, 0.0)):
         if include_image:
             image = Image(); image.width = 1; image.height = 1
             image.encoding = "mono8"; image.step = 1; image.data = [1]
@@ -51,21 +52,25 @@ class Probe(Node):
         scan = LaserScan(); scan.angle_min = -1.2; scan.angle_increment = .1
         scan.range_min = .1; scan.range_max = 10.; scan.ranges = [2.] * 25
         odom = Odometry(); odom.pose.pose.orientation.w = 1.
+        odom.pose.pose.position.y = odom_y
         allowed = Bool(); allowed.data = True
         stage = Int32(); stage.data = 1
         observation = String(); observation.data = json.dumps({
             "schema": "mi_dog_course_observation_v1", "localization_confidence": .9,
-            "front_clearance_m": 2., "heading_error_rad": 0., "facts": {}})
+            "course_pose": course_pose, "front_clearance_m": 2.,
+            "heading_error_rad": 0., "facts": {}})
         self.scan_pub.publish(scan); self.odom_pub.publish(odom)
         self.allowed_pub.publish(allowed); self.stage_pub.publish(stage)
         self.observation_pub.publish(observation)
 
 
-def run_phase(probe, seconds, include_image):
+def run_phase(probe, seconds, include_image, odom_y=0.0,
+              course_pose=(2.0, 2.0, 0.0)):
     probe.commands[:] = []; probe.statuses[:] = []
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        probe.publish(include_image); rclpy.spin_once(probe, timeout_sec=.05); time.sleep(.02)
+        probe.publish(include_image, odom_y, course_pose)
+        rclpy.spin_once(probe, timeout_sec=.05); time.sleep(.02)
 
 
 def stop(process):
@@ -81,8 +86,32 @@ def main():
     process = subprocess.Popen(command(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                start_new_session=True)
     try:
-        run_phase(probe, 2.5, True)
-        assert probe.commands and any(command.linear.x > 0. for command in probe.commands)
+        # First ROS 2 discovery on the ARM64 target can exceed 2.5 seconds.
+        # Keep publishing isolated inputs long enough to distinguish discovery
+        # latency from a controller fail-closed response.
+        run_phase(probe, 4.0, True)
+        assert probe.commands and any(command.linear.x > 0. for command in probe.commands), {
+            "command_count": len(probe.commands),
+            "recent_linear": [round(command.linear.x, 4) for command in probe.commands[-10:]],
+            "recent_status": probe.statuses[-10:],
+            "controller_returncode": process.poll(),
+        }
+        assert max(command.linear.x for command in probe.commands) >= .39
+        run_phase(probe, .8, True, .20)
+        deviation_commands = probe.commands[-5:]
+        assert deviation_commands and all(abs(command.linear.x) < 1e-9 and
+                                          abs(command.angular.z) < 1e-9
+                                          for command in deviation_commands)
+        assert any(status.get("state") == "TRACK_DEVIATION" and
+                   abs(status.get("cross_track_error_m", 0.0)) >= .18
+                   for status in probe.statuses)
+        run_phase(probe, .8, True, 0.0, (3.90, 2.0, 0.0))
+        boundary_commands = probe.commands[-5:]
+        assert boundary_commands and all(abs(command.linear.x) < 1e-9 and
+                                         abs(command.angular.z) < 1e-9
+                                         for command in boundary_commands)
+        assert any(status.get("state") == "BOUNDARY_PREDICTED_STOP"
+                   for status in probe.statuses)
         run_phase(probe, 1.2, False)
         stale_commands = probe.commands[-5:]
         assert stale_commands and all(abs(command.linear.x) < 1e-9 and
@@ -90,6 +119,8 @@ def main():
                                       for command in stale_commands)
         assert any(status.get("state") == "SENSOR_STALE" for status in probe.statuses)
         print("controller_fresh_sensor_motion_candidate=PASS")
+        print("controller_cross_track_deviation_zero=PASS")
+        print("controller_predicted_boundary_stop=PASS")
         print("controller_raw_sensor_stale_zero=PASS")
     finally:
         stop(process); probe.destroy_node(); rclpy.shutdown()

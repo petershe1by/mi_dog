@@ -19,6 +19,12 @@ assert not f["orange_seen"] and not f["lane_boundaries_seen"] and f["heading_err
 ranges = [2.] * 25; ranges[12] = .4
 assert .4 <= m.front_clearance(ranges, -1.2, .1, .1, 10.) <= 2.
 assert m.front_clearance([], -1., .1, .1, 10.) == 0.
+t = m.Stage2TransitTracker(5.25)
+assert t.update(1, 0., 0., 0.) == (0., False)
+assert t.update(2, 1., 2., 0.) == (0., False)
+assert t.update(2, 4., 6., 0.) == (5., False)
+assert t.update(2, 4.4, 6.2, 0.)[1]
+t.reset(); assert t.origin is None and not t.exit_crossed
 u = m.SiteLocalization(transform_valid=False)
 pose, confidence, state = u.update(1., 2., 0.)
 assert pose is None and confidence == 0. and state == "SITE_TRANSFORM_UNCALIBRATED"

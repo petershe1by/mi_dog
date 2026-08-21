@@ -4,7 +4,8 @@
     enable_motion: true
     arm_token: "I_UNDERSTAND_REAL_ROBOT_RISK"
     require_sensor_ready: true
-    require_camera_ready: true
+    # Operator-authorized degraded mode: retain lidar, pose and all other gates.
+    require_camera_ready: false
     require_lidar_ready: true
     require_pose_ready: true
     # Official competition has no external E-stop input; STOP and supervisor are mandatory.
@@ -21,13 +22,14 @@
     command_topic: "/mi_dog_real/safe_cmd_vel"
     front_clearance_summary_topic: "/mi_dog_real/front_clearance_summary"
     supervisor_run_allowed_topic: "/mi_dog_real/supervisor/run_allowed"
+    current_stage_topic: "/mi_dog_real/supervisor/current_stage"
     manage_dialogue: false
     touch_pause_enabled: true
     sensor_timeout_sec: 1.5
     command_timeout_sec: 0.3
     publish_rate_hz: 10.0
     stop_heartbeat_sec: 0.2
-    max_forward_mps: 0.15
+    max_forward_mps: 0.40
     max_lateral_mps: 0.08
     max_yaw_rps: 0.30
     max_forward_accel_mps2: 0.30
@@ -35,6 +37,10 @@
     max_yaw_accel_rps2: 0.60
     front_stop_distance_m: 0.35
     front_slow_distance_m: 0.70
+    # Dense stage-2 balls are intentionally contacted. Only stage 2 uses this
+    # reduced near-contact envelope; every other stage keeps 0.35/0.70 m.
+    stage_2_front_stop_distance_m: 0.18
+    stage_2_front_slow_distance_m: 0.40
     front_half_angle_rad: 0.45
     front_lidar_self_echo_max_m: 0.32
     front_lidar_cluster_range_jump_m: 0.12
@@ -43,3 +49,4 @@
     front_ultrasonic_extreme_stop_m: 0.20
     max_tilt_rad: 0.60
     step_height_m: 0.05
+    stage_1_step_height_m: 0.15

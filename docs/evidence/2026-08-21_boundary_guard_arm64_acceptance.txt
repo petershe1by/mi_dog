@@ -1,0 +1,80 @@
+CyberDog 2 global boundary guard ARM64 acceptance — 2026-08-21 Asia/Shanghai
+
+Scope
+- Runtime outer-course keepout: 0.08 m.
+- Correction begins at 0.30 m.
+- Stopping prediction: 0.20 s reaction, 0.40 m/s^2 limited deceleration.
+- No competition-mode switch, START event, service restart, or real motion command.
+
+Pre-deployment read-only audit
+- service_mode=maintenance
+- supervisor_state=DOWN_WAITING
+- run_allowed=false
+- idle_servo_frames=0
+- battery_percent=71
+- wired_charging=true
+- motion_switch_status=14
+- READ_ONLY_AUDIT=PASS
+
+Rollback and staging
+- Backup: /home/mi/mi_dog_ws/state/pre_boundary_guard_20260821/
+- Staging: /home/mi/mi_dog_ws/state/boundary_guard_staging_20260821/
+- Local and staged SHA256 values matched before installation.
+
+ARM64 build
+- colcon build --packages-select mi_dog_real --symlink-install
+- PASS: 1 package, build summary 2.59 seconds.
+
+Installed pure-algorithm tests
+- race_controller_offline=PASS
+- six_stage_sequence=PASS
+- fail_closed_inputs=PASS
+- uncalibrated_course_gate=PASS
+- official_course_geometry=PASS
+- invalid_geometry_fail_closed=PASS
+- course_boundary_guard=PASS
+- race_mission_six_stage=PASS
+- race_mission_fail_closed=PASS
+- race_mission_checkpoint=PASS
+- course_perception_colour=PASS
+- course_perception_localization_fail_closed=PASS
+- course_perception_no_synthetic_facts=PASS
+
+Installed isolated ROS acceptance (test-only /mi_dog_test namespace)
+- controller_fresh_sensor_motion_candidate=PASS
+- controller_cross_track_deviation_zero=PASS
+- controller_predicted_boundary_stop=PASS
+- controller_raw_sensor_stale_zero=PASS
+- The first run used a 2.5 s discovery window and did not observe the candidate
+  command. The diagnostic rerun passed. The test-only initial publication window
+  was increased to 4.0 s; final rerun passed. Runtime controller parameters were
+  not changed.
+
+Final installed SHA256
+- race_controller.py: 8767c852254c068e538c0b2b424489db0b1f3fb4d51b8f216ac97287a6be3cec
+- race_controller_offline_test.py: b6c7ab47ab0db8ff60783be3e4e1b14bd3d2bcb0610fe6f2f8ffb62b5bc5795d
+- race_controller_sensor_stale_isolated_test.py: fb6692e31eb0b364a1fa72158c0eaffb4fc5532324b06b9918c2346e781a1f60
+- race_controller.yaml: 5392a3bacecfb36f2e636c4ceab4728939c23e87de959143249c73ab658bad0e
+
+Post-deployment read-only audit
+- service_mode=maintenance
+- supervisor_state=DOWN_WAITING
+- run_allowed=false
+- idle_servo_frames=0
+- battery_percent=72
+- wired_charging=true
+- motion_switch_status=14
+- READ_ONLY_AUDIT=PASS
+
+Deployment manifest
+- /home/mi/mi_dog_ws/state/deployment_manifest_20260821T000839+0800.txt
+- SHA256: e0882005d2d6b57dd2bff9bdfb6b869f6632aefdf658436124b30c4af9e718f5
+- schema=mi_dog_real/v3, source_commit=unknown (the local worktree is not frozen)
+- launch_mode=maintenance, service_active=active
+- supervisor_state=DOWN_WAITING, run_allowed=false
+- race controller PID=not_running
+
+Remaining physical gates
+- site_transform_valid remains false until the real course origin and yaw are measured.
+- course_calibrated remains false until per-stage physical acceptance and one full run.
+- Yellow thresholds and 0.08 m boundary behavior still require guarded real-course validation.

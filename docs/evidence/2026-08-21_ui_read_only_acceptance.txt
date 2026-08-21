@@ -1,0 +1,48 @@
+CyberDog 2 competition UI read-only acceptance — 2026-08-21 Asia/Shanghai
+
+Offline HTTP regression
+- competition_ui_offline=PASS
+- competition_mode_manual_controls=DENIED
+- concurrent_write=HTTP_409
+- stop_dispatch_bypasses_lock=PASS
+- camera_token=ONE_TIME_REDACTED
+- camera_stderr_drain=PASS
+- posture_soc_parameter_guard=PASS
+- direct_manual_script_gate=PASS
+- timeout_process_group_cleanup=PASS
+- ui_referee_event_flow=PASS
+
+Live competition-mode UI
+- bind=http://127.0.0.1:8765/
+- target=mi@192.168.44.1
+- maintenance_controls=false
+- GET /api/health: HTTP 200
+- GET /api/status without token: HTTP 403
+- GET /api/status with UI token: HTTP 200
+- POST /api/jog forward: HTTP 403, rejected by competition-mode backend
+- POST /api/posture stand: HTTP 403, rejected by competition-mode backend
+
+Live camera through UI
+- stream HTTP 200
+- multipart boundary present=true
+- JPEG content type present=true
+- first sample=4.24 s
+- frames read=1
+- stream token redacted in access log
+- post-disconnect camera active=false
+
+Final robot status
+- service_active=active
+- state=DOWN_WAITING
+- stage=1
+- run_allowed=false
+- battery_percent=98
+- battery_temp_c=31
+- wired_charging=false
+- power_normal=true
+- motion_id=0
+- motion_progress=100
+- motion_switch_status=0
+
+No START, CONTINUE, PAUSE, STOP, restart, stage selection, posture action, jog,
+or real motion command was dispatched during the live test.
